@@ -1,5 +1,6 @@
 import paramiko
 from scp import SCPClient
+import getpass
 
 def create_ssh_client(server_address, port, username, password):
     """Create SSH client session to remote server"""
@@ -27,14 +28,16 @@ if __name__ == "__main__":
     server_num = '02'
     server = 'sp24-cs525-05' + server_num + '.cs.illinois.edu'
     port = 22  # Default SSH port
-    username = 'your_username'
-    password = 'your_password'
+    print("Enter username: ")
+    username = input()
+    print("Enter password: ")
+    password = getpass.getpass()
     
     ssh = create_ssh_client(server, port, username, password)
     
     if ssh:
-        src_img_path = '.../ILSVRC2012_val_00000001.JPEG' # insert your path to image here
-        dst_img_path = '' # insert your destination path to image here
+        src_img_path = '/Users/johnli/Desktop/CS_525/Progressive-Neural-Compression/demo_simulation/val2017/ILSVRC2012_val_00000001.JPEG' # insert your path to image here
+        dst_img_path = '/home/johnwl2/FrameCorr/output_video_frame_imgs' # insert your destination path to image here
         send_file(ssh, src_img_path, dst_img_path)
         print("File sent successfully.")
         
