@@ -1,0 +1,8 @@
+running
+skating
+kick_front
+riding_horse
+golf_front
+swing_bench
+diving
+lifting
