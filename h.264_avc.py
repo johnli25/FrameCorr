@@ -23,12 +23,8 @@ def compress_videos(home_dir, input_directory, output_directory, codec='libx264'
         if class_folder == '.DS_Store':
             continue
         for file in os.listdir(os.path.join(input_directory, class_folder)):
-
             file_name = file
             input_file_path = os.path.join(input_directory, class_folder, file_name)
-
-            # if file_name.lower().endswith('.avi'):
-                # print("File is .avi")
 
             # Check if the file is an .avi file
             if os.path.isfile(input_file_path) and input_file_path.lower().endswith('.avi'):
