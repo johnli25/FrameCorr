@@ -9,7 +9,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import models
 import logging
-import tensorflow_compression as tfc
+# import tensorflow_compression as tfc
 class TailDropout:
     def __init__(self, func='uniform', shape=(None, None, None)):
         self.func = func
