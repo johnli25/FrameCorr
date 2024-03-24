@@ -10,24 +10,50 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import logging
 from pathlib import Path
 import datetime
+from collections import defaultdict
 # import tensorflow_model_optimization as tfmot
 # quantize_model = tfmot.quantization.keras.quantize_model
 
+def def_value_1():
+    return 0
+
+def def_value(): 
+    return defaultdict(def_value_1)
+
+def extract_info_of_dataset(image_to_label):
+    video_info = defaultdict(def_value)
+    for image_name in image_to_label:
+        image_name = image_name[:-4]
+        underscore_encountered = False
+        j = -1
+        for i in range(len(image_name) - 1, -1, -1):
+            if image_name[i] == "_" and not underscore_encountered:
+                frame_no = image_name[i+1:]
+                underscore_encountered = True
+                j = i
+            elif image_name[i] == "_":
+                video_no = image_name[i+1:j]
+                class_name = image_name[:i]
+                break
+        # class_name, video_no, frame_no = image_name.split("_")
+        video_info[class_name][video_no] += 1
+    return video_info
+
 def prepare_labels():
     # label
-    label_path = 'data/ImageNetLabels.txt'
-    with open(label_path, "r", encoding="UTF8") as lbfile:
-        labels = lbfile.read().splitlines()
+    # label_path = 'data/ImageNetLabels.txt'
+    # with open(label_path, "r", encoding="UTF8") as lbfile:
+    #     labels = lbfile.read().splitlines()
 
     # ground truths
-    gt_path = 'data/caffe_clsloc_validation_ground_truth.txt'
+    gt_path = 'data/video_labels.txt'
     with open(gt_path,"r") as lbfile:
         lines = lbfile.readlines()
-        gts = []
+        gts = {}
         for x in lines:
-            gts.append(int(x.split(' ')[1].splitlines()[0]))
+            gts[x.split(' ')[0]] = int(x.split(' ')[1].splitlines()[0])
     # gts = np.array(gts) + 1
-    gts = np.array(gts)
+    # gts = np.array(gts)
     return gts
 
 def prepare_clssifier(model_folder = "../image_classifiers/", model_name="efficientnet_b0_classification_1"):
@@ -48,16 +74,43 @@ def train_val_test_split(dataset, train_size, val_size, test_size):
     test_dataset = dataset.skip(40000).batch(args.batch_size)
     return train_dataset, val_dataset, test_dataset
 
-def prepare_data_AE(img_paths, gts, args, img_size=(224, 224)):
+def create_image_paths(img_folder, data_info, slice_info):
+    img_paths = []
+    for i, class_name in enumerate(data_info):
+        start, end = slice_info[i][0], slice_info[i][1]
+        for j in range(start, end + 1):
+            for k in range(1, data_info[class_name][str(j)] + 1):
+                img_paths.append(img_folder + "/" + class_name + "_" + str(j) + "_" + str(k) + ".jpg")
+    return img_paths
+
+def prepare_data_AE(img_folder, data_info, args, img_size=(224, 224)):
+    train, val, test = [], [], []
+    for class_name in data_info:
+        number_of_videos = len(data_info[class_name])
+        train_no = int(0.6 * number_of_videos)
+        val_no = int(0.25 * number_of_videos)
+        test_no = number_of_videos - train_no - val_no
+        
+        train.append([1, train_no])
+        val.append([train_no + 1, train_no + val_no])
+        test.append([train_no + val_no + 1, train_no + val_no + test_no])
+
     img_height, img_width = img_size[0], img_size[1]
     # step 1
-    filenames = tf.constant(img_paths)
-    tf_labels = tf.constant(gts)
+    train_img_paths = create_image_paths(img_folder, data_info, train)
+    val_img_paths = create_image_paths(img_folder, data_info, val)
+    test_img_paths = create_image_paths(img_folder, data_info, test)
 
-    # step 2: create a dataset returning slices of `filenames`
-    dataset = tf.data.Dataset.from_tensor_slices((filenames))
+    train_img_paths = tf.constant(train_img_paths)
+    val_img_paths = tf.constant(val_img_paths)
+    test_img_paths = tf.constant(test_img_paths)
 
-    # step 3: parse every image in the dataset using `map`
+    # # step 2: create a dataset returning slices of `filenames`
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_img_paths))
+    val_dataset = tf.data.Dataset.from_tensor_slices((val_img_paths))
+    test_dataset = tf.data.Dataset.from_tensor_slices((test_img_paths))
+
+    # # step 3: parse every image in the dataset using `map`
     def _parse_function_ae(filename):
         image_string = tf.io.read_file(filename)
         image_decoded = tf.image.decode_jpeg(image_string, channels=3)
@@ -66,8 +119,10 @@ def prepare_data_AE(img_paths, gts, args, img_size=(224, 224)):
         image = tf.image.resize(image, (img_height, img_width))
         return image, image
 
-    dataset = dataset.map(_parse_function_ae)
-    train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
+    train_dataset = train_dataset.map(_parse_function_ae).batch(args.batch_size)
+    val_dataset = val_dataset.map(_parse_function_ae).batch(args.batch_size)
+    test_dataset = test_dataset.map(_parse_function_ae).batch(args.batch_size)
+    # train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
     
     return train_dataset, val_dataset, test_dataset
 
@@ -350,7 +405,11 @@ def get_encoder_decoder(autoencoder):
 def ae_model_loader(name):
     if name == 'PNC':
         model = AsymAE_two_conv_PNC
-    
+    # if name == 'AsymAE_two_conv':
+    #     model = AsymAE_two_conv
+    if name == 'as_deeper_2':
+        model = AsymAE_deeper_2
+
     return model
 
 
@@ -386,7 +445,7 @@ if __name__ == "__main__":
     )
     logging.info(str(args))
 
-    # Use GPU for training
+    # # Use GPU for training
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     if args.if_mem_constr:
@@ -394,21 +453,23 @@ if __name__ == "__main__":
         try: tf.config.experimental.set_memory_growth(physical_devices[0], True)
         except: pass
     
-    # prepare labels
-    gts = prepare_labels()[:50000]
+    # # prepare labels
+    image_to_label_map = prepare_labels()#[:50000]
+    data_info = extract_info_of_dataset(image_to_label_map)
+    # print(number_of_videos_per_class)
 
-    # prepare data
-    img_folder = "../val2017"
+    # # prepare data
+    img_folder = "../demo_simulation/val2017"
     assert(os.path.exists(img_folder))
 
-    img_paths = sorted(glob.glob(img_folder+'/*'))[:50000]
-    logging.info("Number of imgs in the folder: {}".format(len(img_paths)))
+    # img_paths = sorted(glob.glob(img_folder+'/*'))[:50000]
+    # logging.info("Number of imgs in the folder: {}".format(len(img_paths)))
     input_size = (args.input_size, args.input_size)
 
-    imagenet_utils=imagenetUtils(size=input_size)
+    # imagenet_utils=imagenetUtils(size=input_size)
 
-    ae_train_dataset, ae_val_dataset, ae_test_dataset = prepare_data_AE(img_paths, gts, img_size=input_size, args=args)
-    cls_train_dataset, cls_val_dataset, cls_test_dataset = prepare_data_CLS(img_paths, gts, img_size=input_size)
+    ae_train_dataset, ae_val_dataset, ae_test_dataset = prepare_data_AE(img_folder, data_info, img_size=input_size, args=args)
+    # cls_train_dataset, cls_val_dataset, cls_test_dataset = prepare_data_CLS(img_paths, gts, img_size=input_size)
 
 
     ae_path = args.ae_path
@@ -487,20 +548,6 @@ if __name__ == "__main__":
         #         self.state['epoch_count'] += 1
         model_state = ModelState(os.path.join(ae_path,"state.json"), ['val_loss'], [tf.math.less])
         
-        
-        class MetricLogger(tf.keras.callbacks.Callback):
-            def __init__(self, monitor, monitor_op, best):
-                self.monitor = monitor
-                self.monitor_op = monitor_op
-                self.best = best
-
-            def on_epoch_end(self, epoch, logs=None):
-                current = logs.get(self.monitor)
-                logging.info("{}".format(logs))
-                if self.monitor_op(current, self.best):
-                    logging.info("{}: \%\%\%\%\% {} improved from {} to {}.".format(epoch, self.monitor, self.best, current))
-                    self.best = current
-                print("        xxxxxxxxxxxxx        ")
         metricloggercallback = MetricLogger(monitor='val_loss', monitor_op=tf.math.less, best=np.inf)
         
         if  model_state.state['best_values']:
@@ -519,7 +566,7 @@ if __name__ == "__main__":
         ##########################################################################
         logging.info("vvvvvvvvvvvvvvvvv Start AE MSE Training vvvvvvvvvvvvvvvvv")
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=args.learning_rate), loss="MSE")
-        # model.summary()
+        model.summary()
         model.fit(
             ae_train_dataset,
             epochs=args.epochs,
@@ -538,96 +585,96 @@ if __name__ == "__main__":
 
         logging.info("^^^^^^^^^^^^^^^^^^ Finish AE MSE Training ^^^^^^^^^^^^^^^^^^")
 
-    elif args.mode == 1:
-        logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
-        logging.info("vvvvvv  Enter Joint Training (NON-Trainable CLS)  vvvvvv")
-        logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
-        last_model_path = os.path.join(joint_path, "last_checkpoint")
-        best_model_path = os.path.join(joint_path, "best_checkpoint")
+    # elif args.mode == 1:
+    #     logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+    #     logging.info("vvvvvv  Enter Joint Training (NON-Trainable CLS)  vvvvvv")
+    #     logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+    #     last_model_path = os.path.join(joint_path, "last_checkpoint")
+    #     best_model_path = os.path.join(joint_path, "best_checkpoint")
 
-        classifier = imagenet_utils.img_classifier(trainable=False)
-        # cls.summary()
-        joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_CLS(img_paths, gts, img_size=input_size)
-        joint_train_dataset.cache()
-        joint_val_dataset.cache()
-        joint_model = fine_tune_AE_MSE_CROSS(model, classifier, args.learning_rate, joint_train_dataset, joint_val_dataset)
+    #     classifier = imagenet_utils.img_classifier(trainable=False)
+    #     # cls.summary()
+    #     joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_CLS(img_paths, gts, img_size=input_size)
+    #     joint_train_dataset.cache()
+    #     joint_val_dataset.cache()
+    #     joint_model = fine_tune_AE_MSE_CROSS(model, classifier, args.learning_rate, joint_train_dataset, joint_val_dataset)
 
-    elif args.mode == 2:
-        model = ModelObject(out_size=10).asym_ae(tailDrop=True, encoder_trainable=False)
-        print("Trying to load model from {}".format(ae_path))
-        if (not args.restart_training) and os.path.exists(ae_path):
-            logging.info("<<<<<<<<<<<<<<<<<< LOAD PREVIOUS MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
-            model_load_path = tf.train.latest_checkpoint(ae_path)
-            if model_load_path is not None:
-                logging.info("    >>> restored from {}".format(model_load_path))
-                model.load_weights(model_load_path)
-            else:
-                model.load_weights(model_load_path)
-        else:
-            logging.info("<<<<<<<<<<<<<<<<<< TRAIN WITH NEW MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
+    # elif args.mode == 2:
+    #     model = ModelObject(out_size=10).asym_ae(tailDrop=True, encoder_trainable=False)
+    #     print("Trying to load model from {}".format(ae_path))
+    #     if (not args.restart_training) and os.path.exists(ae_path):
+    #         logging.info("<<<<<<<<<<<<<<<<<< LOAD PREVIOUS MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
+    #         model_load_path = tf.train.latest_checkpoint(ae_path)
+    #         if model_load_path is not None:
+    #             logging.info("    >>> restored from {}".format(model_load_path))
+    #             model.load_weights(model_load_path)
+    #         else:
+    #             model.load_weights(model_load_path)
+    #     else:
+    #         logging.info("<<<<<<<<<<<<<<<<<< TRAIN WITH NEW MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
     
-        logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
-        logging.info("vvvvvvvv  Enter Joint Training (Trainable CLS)  vvvvvvvv")
-        logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
-        last_model_path = os.path.join(joint_path, "last_checkpoint")
-        best_model_path = os.path.join(joint_path, "best_checkpoint")
+    #     logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+    #     logging.info("vvvvvvvv  Enter Joint Training (Trainable CLS)  vvvvvvvv")
+    #     logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+    #     last_model_path = os.path.join(joint_path, "last_checkpoint")
+    #     best_model_path = os.path.join(joint_path, "best_checkpoint")
 
-        classifier = imagenet_utils.img_classifier(trainable=False)
-        # cls.summary()
-        joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_KL(img_paths, gts, img_size=input_size)
-        joint_train_dataset.cache()
-        joint_val_dataset.cache()
-        joint_model = fine_tune_AE_MSE_KL(model, classifier, args.learning_rate, joint_train_dataset, joint_val_dataset)
+    #     classifier = imagenet_utils.img_classifier(trainable=False)
+    #     # cls.summary()
+    #     joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_KL(img_paths, gts, img_size=input_size)
+    #     joint_train_dataset.cache()
+    #     joint_val_dataset.cache()
+    #     joint_model = fine_tune_AE_MSE_KL(model, classifier, args.learning_rate, joint_train_dataset, joint_val_dataset)
 
-    elif args.mode == 99:
-        def get_encoder_decoder(autoencoder):
-            decoder_input_index = None
-            layerName = 'decoder'
-            for idx, layer in enumerate(autoencoder.layers):
-                if layer.name == layerName:
-                    decoder_input_index = idx
-                    break
+    # elif args.mode == 99:
+    #     def get_encoder_decoder(autoencoder):
+    #         decoder_input_index = None
+    #         layerName = 'decoder'
+    #         for idx, layer in enumerate(autoencoder.layers):
+    #             if layer.name == layerName:
+    #                 decoder_input_index = idx
+    #                 break
 
-            print(decoder_input_index)
+    #         print(decoder_input_index)
                     
-            # encoder = keras.Model(autoencoder.input, autoencoder.get_layer(name = 'encoder').output, name='encoder1')
-            encoder = tf.keras.Sequential(name='encoder1')
-            for layer in autoencoder.layers[:1]:
-                encoder.add(layer)
-            decoder = tf.keras.Sequential(name='decoder1')
-            for layer in autoencoder.layers[decoder_input_index:]:
-                decoder.add(layer)
+    #         # encoder = keras.Model(autoencoder.input, autoencoder.get_layer(name = 'encoder').output, name='encoder1')
+    #         encoder = tf.keras.Sequential(name='encoder1')
+    #         for layer in autoencoder.layers[:1]:
+    #             encoder.add(layer)
+    #         decoder = tf.keras.Sequential(name='decoder1')
+    #         for layer in autoencoder.layers[decoder_input_index:]:
+    #             decoder.add(layer)
 
-            return encoder, decoder
+    #         return encoder, decoder
 
-        def get_encoder_decoder_from_joint(ae_joint):
-            ae = tf.keras.Sequential(name='ae_extracted')
-            for layer in ae_joint.layers[1].layers[:4]:
-                ae.add(layer)
-            ae.summary()
-            encoder, decoder = get_encoder_decoder(ae)
+    #     def get_encoder_decoder_from_joint(ae_joint):
+    #         ae = tf.keras.Sequential(name='ae_extracted')
+    #         for layer in ae_joint.layers[1].layers[:4]:
+    #             ae.add(layer)
+    #         ae.summary()
+    #         encoder, decoder = get_encoder_decoder(ae)
 
-            return encoder, decoder
-        classifier = imagenet_utils.img_classifier(trainable=True)
-        joint_model = imagenet_utils.joint_AE_cls_mse_crossentropy_single(model, classifier)
-        # cls.summary()
-        _,_,eval_test_dataset = prepare_data_CLS(img_paths, gts, img_size=input_size)
-        eval_test_dataset.cache()
-        model_load_path = "saved_models_as_deeper_2/joint_KL/last_checkpoint"
-        if (not args.restart_training) and os.path.exists(model_load_path):
-            logging.info("<<<<<<<<<<<<<<<<<< JOINT: LOAD PREVIOUS MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
-            if model_load_path is not None:
-                logging.info("    ``````` restored from {} ```````    ".format(model_load_path))
-                joint_model.load_weights(model_load_path)
-        else:
-            logging.info("<<<<<<<<<<<<<<<<<< JOINT: TRAIN WITH NEW MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
+    #         return encoder, decoder
+    #     classifier = imagenet_utils.img_classifier(trainable=True)
+    #     joint_model = imagenet_utils.joint_AE_cls_mse_crossentropy_single(model, classifier)
+    #     # cls.summary()
+    #     _,_,eval_test_dataset = prepare_data_CLS(img_paths, gts, img_size=input_size)
+    #     eval_test_dataset.cache()
+    #     model_load_path = "saved_models_as_deeper_2/joint_KL/last_checkpoint"
+    #     if (not args.restart_training) and os.path.exists(model_load_path):
+    #         logging.info("<<<<<<<<<<<<<<<<<< JOINT: LOAD PREVIOUS MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
+    #         if model_load_path is not None:
+    #             logging.info("    ``````` restored from {} ```````    ".format(model_load_path))
+    #             joint_model.load_weights(model_load_path)
+    #     else:
+    #         logging.info("<<<<<<<<<<<<<<<<<< JOINT: TRAIN WITH NEW MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
 
-        print("Spliting encoder and decoder...")
-        encoder, decoder = get_encoder_decoder_from_joint(joint_model)
-        # encoder.save(joint_path+"encoder")
-        # decoder.save(joint_path+"decoder")
+    #     print("Spliting encoder and decoder...")
+    #     encoder, decoder = get_encoder_decoder_from_joint(joint_model)
+    #     # encoder.save(joint_path+"encoder")
+    #     # decoder.save(joint_path+"decoder")
         
-        # if not (args.save_only):
-        print("Evaluation for accuray...")
-        EVAL = evaluate_ae_cls(encoder, decoder, classifier, eval_test_dataset, size=input_size)
-        acc_compressed = [EVAL.eval_for_k_dim_pipeline(k) for k in [10]]
+    #     # if not (args.save_only):
+    #     print("Evaluation for accuray...")
+    #     EVAL = evaluate_ae_cls(encoder, decoder, classifier, eval_test_dataset, size=input_size)
+    #     acc_compressed = [EVAL.eval_for_k_dim_pipeline(k) for k in [10]]
