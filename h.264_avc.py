@@ -74,66 +74,87 @@ def compress_videos(input_directory, output_directory, codec='libx264', crf=23, 
                 except subprocess.CalledProcessError as e:
                     print(f"Failed to compress {output_file_name}: {e}")
                 
-
-action_to_index = {
-    "running": 0,
-    "skating": 1,
-    "kick_front": 2,
-    "riding_horse": 3,
-    "golf_front": 4,
-    "swing_bench": 5,
-    "diving": 6,
-    "lifting": 7
-}
+# NOTE: didn't end up using
+action_to_index = {"running": 0, "skating": 1, "kick_front": 2, "riding_horse": 3, "golf_front": 4, "swing_bench": 5,"diving": 6,"lifting": 7}
 
 def create_new_dataset(input_directory, output_directory): 
+    """
+    Extract frames from all .avi files in the input_directory and save them in the output_directory.
+    """
     # Create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
 
-    # Define the output text file
-    output_file = os.path.join(output_directory, 'new_video_numidx_labels.txt')
-
     # Open the output file in write mode
+    # List all files in the input directory
+    for class_folder in os.listdir(input_directory):
+        # Ignore .DS_Store files and text files
+        if class_folder == '.DS_Store':
+            continue
+
+        for file in os.listdir(os.path.join(input_directory, class_folder)):
+            input_file_path = os.path.join(input_directory, class_folder, file)
+
+            # Check if the file is an .avi file
+            if os.path.isfile(input_file_path) and input_file_path.lower().endswith('.avi'):
+                # Create a new directory for the frames
+                # frames_directory = os.path.join(output_directory, class_folder)
+                frames_directory = output_directory
+                os.makedirs(frames_directory, exist_ok=True)
+
+                # Use regex to split the base name into the action and the number
+                match = re.match(r"([a-z_]+)([0-9]+)", os.path.splitext(file)[0], re.I)
+
+                if match:
+                    action, number = match.groups()
+
+                    # Define the FFmpeg command for extracting frames
+                    command = [
+                        'ffmpeg', '-i', input_file_path, 
+                        os.path.join(frames_directory, f"{action}_{number}_%03d.jpg")
+                    ]
+
+                    # Run the FFmpeg command
+                    subprocess.run(command, check=True)
+
+def create_new_labels_txt(directory='new_video_frames_dataset'):
+    """
+    Create a new .txt file containing the file names and their corresponding action labels.
+    """
+    output_file = 'new_video_numidx_labels.txt'
     with open(output_file, 'w') as f:
-        # List all files in the input directory
-        for class_folder in os.listdir(input_directory):
-            # Ignore .DS_Store files and text files
-            if class_folder == '.DS_Store':
-                continue
 
-            for file in os.listdir(os.path.join(input_directory, class_folder)):
-                input_file_path = os.path.join(input_directory, class_folder, file)
+        # Write the file name and the action to the output file
+        for filename in os.listdir(directory):
+            print(filename)
+            if "running" in filename:
+                action, number = "running", 0
+            elif "skating" in filename:
+                action, number = "skating", 1
+            elif "kick_front" in filename:
+                action, number = "kick_front", 2
+            elif "riding_horse" in filename:
+                action, number = "riding_horse", 3
+            elif "golf_front" in filename:
+                action, number = "golf_front", 4
+            elif "swing_bench" in filename:
+                action, number = "swing_bench", 5
+            elif "diving" in filename:
+                action, number = "diving", 6
+            elif "lifting" in filename:
+                action, number = "lifting", 7
+            else: # throw error
+                raise Exception(f"Error: {filename} does not match any action.")
 
-                # Check if the file is an .avi file
-                if os.path.isfile(input_file_path) and input_file_path.lower().endswith('.avi'):
-                    # Create a new directory for the frames
-                    frames_directory = os.path.join(output_directory, class_folder)
-                    os.makedirs(frames_directory, exist_ok=True)
-
-                    # Use regex to split the base name into the action and the number
-                    match = re.match(r"([a-z_]+)([0-9]+)", os.path.splitext(file)[0], re.I)
-
-                    if match:
-                        action, number = match.groups()
-
-                        # Define the FFmpeg command for extracting frames
-                        command = [
-                            'ffmpeg', '-i', input_file_path, 
-                            os.path.join(frames_directory, f"{action}_{number}_%03d.jpg")
-                        ]
-
-                        # Run the FFmpeg command
-                        subprocess.run(command, check=True)
-
-                        # Write the file name and the action to the output file
-                        f.write(f"{action}_{number.zfill(3)}.jpg {action_to_index[action]}\n")
+            f.write(f"{filename}.jpg {number}\n")
 
 # Example usage
-input_dir = 'video_data_files'
+original_input_dir = 'video_data_files'
 output_dir = 'compressed_videos_output'
 home_dir = os.getcwd()
 
 start_time = time.time()
-# create_new_dataset(input_dir, 'new_video_data_files')
-compress_videos(input_dir, output_dir)
+# uncomment these function driver calls when necessary
+# create_new_dataset(original_input_dir, 'new_video_frames_dataset')
+create_new_labels_txt('new_video_frames_dataset')
+# compress_videos(original_input_dir, output_dir)
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
