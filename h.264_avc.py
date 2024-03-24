@@ -39,13 +39,13 @@ def compress_videos(input_directory, output_directory, codec='libx264', crf=23, 
         if class_folder == '.DS_Store':
             continue
         for file in os.listdir(os.path.join(input_directory, class_folder)):
-            file_name = file
-            input_file_path = os.path.join(input_directory, class_folder, file_name)
+            input_file_name = file
+            input_file_path = os.path.join(input_directory, class_folder, input_file_name)
 
             # Check if the file is an .avi file
             if os.path.isfile(input_file_path) and input_file_path.lower().endswith('.avi'):
                 # Define the output file name (change extension to .mp4)
-                output_file_name = f"{os.path.splitext(file_name)[0]}.mp4"
+                output_file_name = f"{os.path.splitext(input_file_name)[0]}.mp4"
                 output_file_path = os.path.join(output_directory, output_file_name)
                 
                 # Construct the FFmpeg command for compression
@@ -61,7 +61,7 @@ def compress_videos(input_directory, output_directory, codec='libx264', crf=23, 
                 ]
 
                 num_frames = get_number_of_frames(input_file_path)
-                print(f"Number of frames in {file_name}: {num_frames}")
+                print(f"Number of frames in {input_file_name}: {num_frames}")
                 
                 # Execute the command and time it
                 start_time = time.time()
@@ -69,8 +69,11 @@ def compress_videos(input_directory, output_directory, codec='libx264', crf=23, 
                     subprocess.run(command, check=True)
                     duration = time.time() - start_time
                     print(f"Compressed: {output_file_name} in {duration:.2f} seconds.")
+                    num_frames = get_number_of_frames(output_file_path)
+                    print(f"(Output) Number of frames in {output_file_name}: {num_frames}")
                 except subprocess.CalledProcessError as e:
-                    print(f"Failed to compress {file_name}: {e}")
+                    print(f"Failed to compress {output_file_name}: {e}")
+                
 
 action_to_index = {
     "running": 0,
@@ -94,7 +97,7 @@ def create_new_dataset(input_directory, output_directory):
     with open(output_file, 'w') as f:
         # List all files in the input directory
         for class_folder in os.listdir(input_directory):
-            # Ignore .DS_Store files
+            # Ignore .DS_Store files and text files
             if class_folder == '.DS_Store':
                 continue
 
@@ -127,10 +130,10 @@ def create_new_dataset(input_directory, output_directory):
 
 # Example usage
 input_dir = 'video_data_files'
-output_dir = 'compressed_videos'
+output_dir = 'compressed_videos_output'
 home_dir = os.getcwd()
 
 start_time = time.time()
-create_new_dataset(input_dir, 'new_video_data_files')
-# compress_videos(input_dir, output_dir)
+# create_new_dataset(input_dir, 'new_video_data_files')
+compress_videos(input_dir, output_dir)
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
