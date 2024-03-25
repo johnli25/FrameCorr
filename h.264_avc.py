@@ -2,6 +2,8 @@ import os
 import subprocess
 import time
 import re
+from PIL import Image
+import numpy as np
 
 '''
 Helper function to get the number of frames in a video file using FFprobe.
@@ -17,6 +19,7 @@ def get_number_of_frames(video_file_path):
     ]
     output = subprocess.check_output(command).decode('utf-8')
     return int(output)
+
 
 def compress_videos(input_directory, output_directory, codec='libx264', crf=23, preset='medium'):
     """
@@ -73,11 +76,12 @@ def compress_videos(input_directory, output_directory, codec='libx264', crf=23, 
                     print(f"(Output) Number of frames in {output_file_name}: {num_frames}")
                 except subprocess.CalledProcessError as e:
                     print(f"Failed to compress {output_file_name}: {e}")
+
                 
-# NOTE: didn't end up using
+# NOTE: didn't end up using this dict
 action_to_index = {"running": 0, "skating": 1, "kick_front": 2, "riding_horse": 3, "golf_front": 4, "swing_bench": 5,"diving": 6,"lifting": 7}
 
-def create_new_dataset(input_directory, output_directory): 
+def create_new_input_frames(input_directory, output_directory): 
     """
     Extract frames from all .avi files in the input_directory and save them in the output_directory.
     """
@@ -96,11 +100,6 @@ def create_new_dataset(input_directory, output_directory):
 
             # Check if the file is an .avi file
             if os.path.isfile(input_file_path) and input_file_path.lower().endswith('.avi'):
-                # Create a new directory for the frames
-                # frames_directory = os.path.join(output_directory, class_folder)
-                frames_directory = output_directory
-                os.makedirs(frames_directory, exist_ok=True)
-
                 # Use regex to split the base name into the action and the number
                 match = re.match(r"([a-z_]+)([0-9]+)", os.path.splitext(file)[0], re.I)
 
@@ -110,11 +109,38 @@ def create_new_dataset(input_directory, output_directory):
                     # Define the FFmpeg command for extracting frames
                     command = [
                         'ffmpeg', '-i', input_file_path, 
-                        os.path.join(frames_directory, f"{action}_{number}_%03d.jpg")
+                        os.path.join(output_directory, f"{action}_{number}_%03d.jpg")
                     ]
 
                     # Run the FFmpeg command
                     subprocess.run(command, check=True)
+
+
+def create_new_output_frames(output_videos, output_frames_directory):
+    """
+    Extract frames from all .mp4 files in the output_videos and save them in output_frames_directory.
+    """
+    # Create the output directory if it doesn't exist
+    os.makedirs(output_frames_directory, exist_ok=True)
+
+    # List all files in the input directory
+    for file in os.listdir(output_videos):
+        if os.path.isfile(os.path.join(output_videos, file)) and file.lower().endswith('.mp4'):
+            match = re.match(r"([a-z_]+)([0-9]+)", os.path.splitext(file)[0], re.I)
+
+            if match:
+                action, number = match.groups()
+
+                # Define the FFmpeg command for extracting frames
+                command = [
+                    'ffmpeg', '-i', os.path.join(output_videos, file), 
+                    os.path.join(output_frames_directory, f"{action}_{number}_%03d.jpg")
+
+                ]
+
+                # Run the FFmpeg command
+                subprocess.run(command, check=True)
+
 
 def create_new_labels_txt(directory='new_video_frames_dataset'):
     """
@@ -147,14 +173,69 @@ def create_new_labels_txt(directory='new_video_frames_dataset'):
 
             f.write(f"{filename} {number}\n")
 
-# Example usage
-original_input_dir = 'video_data_files'
+def calculate_mse(original_frames_directory, compressed_frames_directory):
+    """
+    Calculate the Mean Squared Error (MSE) between the original and compressed video frames.
+    
+    Parameters:
+    - original_frames_directory: Path to the directory containing original video frames.
+    - compressed_frames_directory: Path to the directory containing compressed video frames.
+    """
+    mse_values = []
+
+    # Iterate over all frames in the original directory
+    for frame_file in os.listdir(original_frames_directory):
+        # Ensure the file is an image file
+        if frame_file.lower().endswith(('.png', '.jpg', '.jpeg')):
+            # Open the original and compressed frames
+            original_frame = Image.open(os.path.join(original_frames_directory, frame_file))
+            compressed_frame = Image.open(os.path.join(compressed_frames_directory, frame_file))
+
+            # Convert the images to numpy arrays
+            original_array = np.array(original_frame)
+            compressed_array = np.array(compressed_frame)
+
+            # Calculate the MSE for this frame and add it to the list
+            mse = np.mean((original_array - compressed_array) ** 2)
+            mse_values.append(mse)
+
+    # Calculate the average MSE over all frames
+    average_mse = np.mean(mse_values)
+
+    return average_mse
+
+original_input_dir = 'video_data'
 output_dir = 'compressed_videos_output'
 home_dir = os.getcwd()
 
 start_time = time.time()
-# uncomment these function driver calls when necessary
-# create_new_dataset(original_input_dir, 'new_video_frames_dataset')
-create_new_labels_txt('new_video_frames_dataset')
+'''
+uncomment the below function driver calls when necessary
+'''
+# create_new_input_frames(original_input_dir, 'new_video_frames_dataset')
+# create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
+# create_new_output_frames(output_dir, 'compressed_video_frames_output_dataset')
+# calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset')
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
+
+# NOTE: sanity checks
+
+num_files = sum([len(files) for r, d, files in os.walk("video_data")])
+print(f'There are {num_files} - 1 files in video_data directory (due to the .DS_store file, dont count it).')
+
+num_files = len([f for f in os.listdir("compressed_videos_output") if os.path.isfile(os.path.join("compressed_videos_output", f))])
+print(f'There are {num_files} files in video_data directory.')
+
+num_files = len([f for f in os.listdir("new_video_frames_dataset") if os.path.isfile(os.path.join("new_video_frames_dataset", f))])
+print(f'There are {num_files} files in new_video_frames_dataset directory.')
+
+num_files = len([f for f in os.listdir("compressed_video_frames_output_dataset") if os.path.isfile(os.path.join("compressed_video_frames_output_dataset", f))])
+print(f'There are {num_files} files in compressed_video_frames_output_dataset directory.')
+
+filename = 'new_video_numidx_labels.txt'  # replace with your file
+with open(filename, 'r') as file:
+    lines = file.readlines()
+print(f'The file new_video_numidx_labels.txt has {len(lines)} lines.')
+
+
