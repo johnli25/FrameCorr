@@ -4,6 +4,7 @@ import time
 import re
 from PIL import Image
 import numpy as np
+from collections import defaultdict
 
 '''
 Helper function to get the number of frames in a video file using FFprobe.
@@ -181,10 +182,16 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
     - original_frames_directory: Path to the directory containing original video frames.
     - compressed_frames_directory: Path to the directory containing compressed video frames.
     """
-    mse_values = []
+    mse_values = defaultdict(list)
 
     # Iterate over all frames in the original directory
     for frame_file in os.listdir(original_frames_directory):
+
+        match = re.match(r"([a-z_]+)([0-9]+)", os.path.splitext(frame_file)[0], re.I)
+
+        if match:
+            action, number = match.groups()
+
         # Ensure the file is an image file
         if frame_file.lower().endswith(('.png', '.jpg', '.jpeg')):
             # Open the original and compressed frames
@@ -195,14 +202,16 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
             original_array = np.array(original_frame)
             compressed_array = np.array(compressed_frame)
 
-            # Calculate the MSE for this frame and add it to the list
+            # Calculate the MSE for this frame and add it to the dict
             mse = np.mean((original_array - compressed_array) ** 2)
-            mse_values.append(mse)
+            mse_values[str(action) + str(number)].append(mse)
+        
+    # Calculate the average MSE over all image frames per video
+    for key in mse_values:
+        mse_values[key] = np.mean(mse_values[key])
 
-    # Calculate the average MSE over all frames
-    average_mse = np.mean(mse_values)
-
-    return average_mse
+    print("mse_values dict length: ", len(mse_values))
+    return mse_values # return average mse_values per vid
 
 original_input_dir = 'video_data'
 output_dir = 'compressed_videos_output'
@@ -216,7 +225,7 @@ uncomment the below function driver calls when necessary
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
 # create_new_output_frames(output_dir, 'compressed_video_frames_output_dataset')
-# calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset')
+print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
