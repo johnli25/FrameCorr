@@ -199,8 +199,8 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
             compressed_frame = Image.open(os.path.join(compressed_frames_directory, frame_file))
 
             # Convert the images to numpy arrays
-            original_array = np.array(original_frame)
-            compressed_array = np.array(compressed_frame)
+            original_array = np.array(original_frame) / 255.0
+            compressed_array = np.array(compressed_frame) / 255.0
 
             # Calculate the MSE for this frame and add it to the dict
             mse = np.mean((original_array - compressed_array) ** 2)
