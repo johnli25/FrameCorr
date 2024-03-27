@@ -24,7 +24,7 @@ def get_number_of_frames(video_file_path):
 
 def compress_videos(input_directory, output_directory, codec='libx264', crf=23, preset='medium'):
     """
-    Compress all .avi files in the input_directory using H.264 AVC codec with FFmpeg.
+    (Encoding) Compress all .avi files in the input_directory using H.264 AVC codec with FFmpeg.
     
     Parameters:
     - input_directory: Path to the directory containing .avi video files.
@@ -117,9 +117,9 @@ def create_new_input_frames(input_directory, output_directory):
                     subprocess.run(command, check=True)
 
 
-def create_new_output_frames(output_videos, output_frames_directory):
+def create_decoded_output_frames(output_videos, output_frames_directory):
     """
-    Extract frames from all .mp4 files in the output_videos and save them in output_frames_directory.
+    (Decoding/Decompression) Extract frames from all .mp4 files in the output_videos and save them in output_frames_directory.
     """
     # Create the output directory if it doesn't exist
     os.makedirs(output_frames_directory, exist_ok=True)
@@ -136,7 +136,6 @@ def create_new_output_frames(output_videos, output_frames_directory):
                 command = [
                     'ffmpeg', '-i', os.path.join(output_videos, file), 
                     os.path.join(output_frames_directory, f"{action}_{number}_%03d.jpg")
-
                 ]
 
                 # Run the FFmpeg command
@@ -211,23 +210,23 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
         mse_values[key] = np.mean(mse_values[key])
 
     print("mse_values dict length: ", len(mse_values))
-    # print(mse_values['diving_7'])
-    # print(mse_values['golf_front_7'])
-    # print(mse_values['golf_front_8'])
-    # print(mse_values['kick_front_9'])
-    # print(mse_values['kick_front_10'])
-    # print(mse_values['lifting_5'])
-    # print(mse_values['lifting_6'])
-    # print(mse_values['riding_horse_11'])
-    # print(mse_values['riding_horse_12'])
-    # print(mse_values['running_11'])
-    # print(mse_values['running_12'])
-    # print(mse_values['running_13'])
-    # print(mse_values['skating_11'])
-    # print(mse_values['skating_12'])
-    # print(mse_values['swing_bench_18'])
-    # print(mse_values['swing_bench_19'])
-    # print(mse_values['swing_bench_20'])
+    print(mse_values['diving_7'])
+    print(mse_values['golf_front_7'])
+    print(mse_values['golf_front_8'])
+    print(mse_values['kick_front_9'])
+    print(mse_values['kick_front_10'])
+    print(mse_values['lifting_5'])
+    print(mse_values['lifting_6'])
+    print(mse_values['riding_horse_11'])
+    print(mse_values['riding_horse_12'])
+    print(mse_values['running_11'])
+    print(mse_values['running_12'])
+    print(mse_values['running_13'])
+    print(mse_values['skating_11'])
+    print(mse_values['skating_12'])
+    print(mse_values['swing_bench_18'])
+    print(mse_values['swing_bench_19'])
+    print(mse_values['swing_bench_20'])
     return mse_values # return average mse_values per vid
 
 original_input_dir = 'video_data'
@@ -241,7 +240,7 @@ uncomment the below function driver calls when necessary
 # create_new_input_frames(original_input_dir, 'new_video_frames_dataset')
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
-# create_new_output_frames(output_dir, 'compressed_video_frames_output_dataset')
+# create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
 print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
@@ -262,5 +261,3 @@ filename = 'new_video_numidx_labels.txt'  # replace with your file
 with open(filename, 'r') as file:
     lines = file.readlines()
 print(f'The file new_video_numidx_labels.txt has {len(lines)} lines.')
-
-
