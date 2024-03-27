@@ -203,14 +203,31 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
             compressed_array = np.array(compressed_frame) / 255.0
 
             # Calculate the MSE for this frame and add it to the dict
-            mse = np.mean((original_array - compressed_array) ** 2)
+            mse = np.sum((original_array - compressed_array) ** 2)
             mse_values[str(action) + str(number)].append(mse)
-        
+
     # Calculate the average MSE over all image frames per video
     for key in mse_values:
         mse_values[key] = np.mean(mse_values[key])
 
     print("mse_values dict length: ", len(mse_values))
+    # print(mse_values['diving_7'])
+    # print(mse_values['golf_front_7'])
+    # print(mse_values['golf_front_8'])
+    # print(mse_values['kick_front_9'])
+    # print(mse_values['kick_front_10'])
+    # print(mse_values['lifting_5'])
+    # print(mse_values['lifting_6'])
+    # print(mse_values['riding_horse_11'])
+    # print(mse_values['riding_horse_12'])
+    # print(mse_values['running_11'])
+    # print(mse_values['running_12'])
+    # print(mse_values['running_13'])
+    # print(mse_values['skating_11'])
+    # print(mse_values['skating_12'])
+    # print(mse_values['swing_bench_18'])
+    # print(mse_values['swing_bench_19'])
+    # print(mse_values['swing_bench_20'])
     return mse_values # return average mse_values per vid
 
 original_input_dir = 'video_data'
@@ -229,7 +246,6 @@ print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'c
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
-
 num_files = sum([len(files) for r, d, files in os.walk("video_data")])
 print(f'There are {num_files} - 1 files in video_data directory (due to the .DS_store file, dont count it).')
 
