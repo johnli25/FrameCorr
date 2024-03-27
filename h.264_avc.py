@@ -55,7 +55,7 @@ def compress_videos(input_directory, output_directory, codec='libx264', crf=23, 
                 # Construct the FFmpeg command for compression
                 command = [
                     'ffmpeg',
-                    '-i', input_file_path,      # Input file
+                    '-i', input_file_path,     # Input file
                     '-c:v', codec,             # Video codec
                     '-crf', str(crf),          # Constant Rate Factor
                     '-preset', preset,         # Preset for compression speed/quality
@@ -154,21 +154,21 @@ def create_new_labels_txt(directory='new_video_frames_dataset'):
         for filename in sorted(os.listdir(directory)):
             print(filename)
             if "running" in filename:
-                action, number = "running", 0
+                number = 0
             elif "skating" in filename:
-                action, number = "skating", 1
+                number = 1
             elif "kick_front" in filename:
-                action, number = "kick_front", 2
+                number = 2
             elif "riding_horse" in filename:
-                action, number = "riding_horse", 3
+                number = 3
             elif "golf_front" in filename:
-                action, number = "golf_front", 4
+                number = 4
             elif "swing_bench" in filename:
-                action, number = "swing_bench", 5
+                number = 5
             elif "diving" in filename:
-                action, number = "diving", 6
+                number = 6
             elif "lifting" in filename:
-                action, number = "lifting", 7
+                number = 7
             else: # throw error
                 raise Exception(f"Error: {filename} does not match any action.")
 
