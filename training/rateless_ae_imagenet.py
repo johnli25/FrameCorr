@@ -46,7 +46,7 @@ def prepare_labels():
     #     labels = lbfile.read().splitlines()
 
     # ground truths
-    gt_path = 'data/video_labels.txt'
+    gt_path = 'data/new_video_numidx_labels.txt'
     with open(gt_path,"r") as lbfile:
         lines = lbfile.readlines()
         gts = {}
@@ -80,7 +80,7 @@ def create_image_paths(img_folder, data_info, slice_info):
         start, end = slice_info[i][0], slice_info[i][1]
         for j in range(start, end + 1):
             for k in range(1, data_info[class_name][str(j)] + 1):
-                img_paths.append(img_folder + "/" + class_name + "_" + str(j) + "_" + str(k) + ".jpg")
+                img_paths.append(img_folder + "/" + class_name + "_" + str(j) + "_" + str(k).zfill(3) + ".jpg")
     return img_paths
 
 def prepare_data_AE(img_folder, data_info, args, img_size=(224, 224)):
@@ -118,10 +118,18 @@ def prepare_data_AE(img_folder, data_info, args, img_size=(224, 224)):
         image /= 255.0
         image = tf.image.resize(image, (img_height, img_width))
         return image, image
+    
+    def _parse_function_ae_test(filename):
+        image_string = tf.io.read_file(filename)
+        image_decoded = tf.image.decode_jpeg(image_string, channels=3)
+        image = tf.cast(image_decoded, tf.float32)
+        image /= 255.0
+        image = tf.image.resize(image, (img_height, img_width))
+        return filename, image, image
 
     train_dataset = train_dataset.map(_parse_function_ae).batch(args.batch_size)
     val_dataset = val_dataset.map(_parse_function_ae).batch(args.batch_size)
-    test_dataset = test_dataset.map(_parse_function_ae).batch(args.batch_size)
+    test_dataset = test_dataset.map(_parse_function_ae_test)#.batch(args.batch_size)
     # train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
     
     return train_dataset, val_dataset, test_dataset
@@ -456,10 +464,10 @@ if __name__ == "__main__":
     # # prepare labels
     image_to_label_map = prepare_labels()#[:50000]
     data_info = extract_info_of_dataset(image_to_label_map)
-    # print(number_of_videos_per_class)
+    # print(data_info)
 
     # # prepare data
-    img_folder = "../demo_simulation/val2017"
+    img_folder = "../new_video_frames_dataset"
     assert(os.path.exists(img_folder))
 
     # img_paths = sorted(glob.glob(img_folder+'/*'))[:50000]
@@ -471,11 +479,15 @@ if __name__ == "__main__":
     ae_train_dataset, ae_val_dataset, ae_test_dataset = prepare_data_AE(img_folder, data_info, img_size=input_size, args=args)
     # cls_train_dataset, cls_val_dataset, cls_test_dataset = prepare_data_CLS(img_paths, gts, img_size=input_size)
 
+    # for data in ae_test_dataset:
+    #     print(data[0] - data[1])
+    #     exit()
+
 
     ae_path = args.ae_path
     joint_path = args.joint_path
     ModelObject = ae_model_loader(args.model)
-    model = ModelObject(out_size=10).asym_ae(tailDrop=True)
+    model = ModelObject(out_size=10).asym_ae(tailDrop=True if args.mode != 19 else False)
     if (not args.restart_training) and os.path.exists(ae_path):
         logging.info("<<<<<<<<<<<<<<<<<< LOAD PREVIOUS MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
         model_load_path = tf.train.latest_checkpoint(ae_path)
@@ -584,7 +596,35 @@ if __name__ == "__main__":
         )
 
         logging.info("^^^^^^^^^^^^^^^^^^ Finish AE MSE Training ^^^^^^^^^^^^^^^^^^")
-
+    elif args.mode == 19:
+        # avg_mse = 0
+        # frame_count = 0
+        # for input_image, output_image in ae_val_dataset:
+        #     predicted_image = model.predict(input_image)
+        #     mse = tf.reduce_sum(tf.math.square(predicted_image - output_image), axis=None)
+        #     avg_mse += mse
+        #     frame_count += args.batch_size
+        # avg_mse /= frame_count
+        # print(avg_mse)
+        
+        mse_per_video = defaultdict(def_value_1)
+        frame_per_video = defaultdict(def_value_1)
+        for file, input_image, output_image in ae_test_dataset:
+            predicted_image = model.predict(tf.expand_dims(input_image, axis=0))
+            mse = tf.reduce_sum(tf.math.square(predicted_image - output_image), axis=None)
+            video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
+            mse_per_video[video] += mse
+            frame_per_video[video] += 1
+            # break
+        for video in mse_per_video:
+            mse_per_video[video] /= frame_per_video[video]
+            print(video, mse_per_video[video].numpy())
+    
+    # elif args.mode == 20:
+    #     encoder = intermediate_layer_model = tf.keras.Model(inputs=model.input,
+    #                                        outputs=model.get_layer("encoder").output)
+    #     print(encoder.summary())
+            
     # elif args.mode == 1:
     #     logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
     #     logging.info("vvvvvv  Enter Joint Training (NON-Trainable CLS)  vvvvvv")
@@ -626,35 +666,37 @@ if __name__ == "__main__":
     #     joint_val_dataset.cache()
     #     joint_model = fine_tune_AE_MSE_KL(model, classifier, args.learning_rate, joint_train_dataset, joint_val_dataset)
 
-    # elif args.mode == 99:
-    #     def get_encoder_decoder(autoencoder):
-    #         decoder_input_index = None
-    #         layerName = 'decoder'
-    #         for idx, layer in enumerate(autoencoder.layers):
-    #             if layer.name == layerName:
-    #                 decoder_input_index = idx
-    #                 break
+    elif args.mode == 99:
+        def get_encoder_decoder(autoencoder):
+            decoder_input_index = None
+            layerName = 'decoder'
+            for idx, layer in enumerate(autoencoder.layers):
+                if layer.name == layerName:
+                    decoder_input_index = idx
+                    break
 
-    #         print(decoder_input_index)
+            # print(decoder_input_index)
                     
-    #         # encoder = keras.Model(autoencoder.input, autoencoder.get_layer(name = 'encoder').output, name='encoder1')
-    #         encoder = tf.keras.Sequential(name='encoder1')
-    #         for layer in autoencoder.layers[:1]:
-    #             encoder.add(layer)
-    #         decoder = tf.keras.Sequential(name='decoder1')
-    #         for layer in autoencoder.layers[decoder_input_index:]:
-    #             decoder.add(layer)
+            # encoder = keras.Model(autoencoder.input, autoencoder.get_layer(name = 'encoder').output, name='encoder1')
+            encoder = tf.keras.Sequential(name='encoder1')
+            for layer in autoencoder.layers[:decoder_input_index]:
+                encoder.add(layer)
+            decoder = tf.keras.Sequential(name='decoder1')
+            for layer in autoencoder.layers[decoder_input_index:]:
+                decoder.add(layer)
 
-    #         return encoder, decoder
+            return encoder, decoder
 
-    #     def get_encoder_decoder_from_joint(ae_joint):
-    #         ae = tf.keras.Sequential(name='ae_extracted')
-    #         for layer in ae_joint.layers[1].layers[:4]:
-    #             ae.add(layer)
-    #         ae.summary()
-    #         encoder, decoder = get_encoder_decoder(ae)
+        def get_encoder_decoder_from_joint(ae_joint):
+            ae = tf.keras.Sequential(name='ae_extracted')
+            for layer in ae_joint.layers[1].layers[:4]:
+                ae.add(layer)
+            ae.summary()
+            encoder, decoder = get_encoder_decoder(ae)
 
-    #         return encoder, decoder
+            return encoder, decoder
+        encoder, decoder = get_encoder_decoder(model)
+        encoder.summary()
     #     classifier = imagenet_utils.img_classifier(trainable=True)
     #     joint_model = imagenet_utils.joint_AE_cls_mse_crossentropy_single(model, classifier)
     #     # cls.summary()
