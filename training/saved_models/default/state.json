@@ -1,0 +1,9 @@
+{
+    "epoch_count": 20,
+    "best_values": {
+        "val_loss": 0.004998575896024704
+    },
+    "best_epoch": {
+        "val_loss": 20
+    }
+}
