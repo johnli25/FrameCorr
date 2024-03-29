@@ -5,6 +5,7 @@ import re
 from PIL import Image
 import numpy as np
 from collections import defaultdict
+import cv2
 
 '''
 Helper function to get the number of frames in a video file using FFprobe.
@@ -210,24 +211,66 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
         mse_values[key] = np.mean(mse_values[key])
 
     print("mse_values dict length: ", len(mse_values))
-    print(mse_values['diving_7'])
-    print(mse_values['golf_front_7'])
-    print(mse_values['golf_front_8'])
-    print(mse_values['kick_front_9'])
-    print(mse_values['kick_front_10'])
-    print(mse_values['lifting_5'])
-    print(mse_values['lifting_6'])
-    print(mse_values['riding_horse_11'])
-    print(mse_values['riding_horse_12'])
-    print(mse_values['running_11'])
-    print(mse_values['running_12'])
-    print(mse_values['running_13'])
-    print(mse_values['skating_11'])
-    print(mse_values['skating_12'])
-    print(mse_values['swing_bench_18'])
-    print(mse_values['swing_bench_19'])
-    print(mse_values['swing_bench_20'])
+    # print(mse_values['diving_7'])
+    # print(mse_values['golf_front_7'])
+    # print(mse_values['golf_front_8'])
+    # print(mse_values['kick_front_9'])
+    # print(mse_values['kick_front_10'])
+    # print(mse_values['lifting_5'])
+    # print(mse_values['lifting_6'])
+    # print(mse_values['riding_horse_11'])
+    # print(mse_values['riding_horse_12'])
+    # print(mse_values['running_11'])
+    # print(mse_values['running_12'])
+    # print(mse_values['running_13'])
+    # print(mse_values['skating_11'])
+    # print(mse_values['skating_12'])
+    # print(mse_values['swing_bench_18'])
+    # print(mse_values['swing_bench_19'])
+    # print(mse_values['swing_bench_20'])
     return mse_values # return average mse_values per vid
+
+def extract_bytes_from_video(output_videos):
+    '''
+    Extract bytes from the compressed video files and save them in a text file.
+    '''
+    output_directory = 'compressed_video_bytes'
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    # Open the MP4 video file
+    for file in os.listdir(output_videos):
+        if os.path.isfile(os.path.join(output_videos, file)) and file.lower().endswith('.mp4'):
+            video_path = os.path.join(output_videos, file)
+            cap = cv2.VideoCapture(video_path)
+
+            # Check if the video file is opened successfully
+            if not cap.isOpened():
+                print("Error: Could not open the video file.")
+                exit()
+            total_bytes = 0
+            output_filepath = os.path.join(output_directory, f"{os.path.splitext(file)[0]}.txt")
+            with open(output_filepath, 'wb') as f:
+                frame_number = 0
+                while cap.isOpened():
+                    ret, frame = cap.read()
+
+                    if not ret: break
+
+                    # Get the encoded information of the frame
+                    encoded_info = cv2.imencode('.jpg', frame)[1].tobytes()
+                    # 'encoded_info' now contains the encoded information of the frame
+                    f.write(encoded_info)
+                    
+                    # Process the frame or save the encoded information as needed
+                    total_bytes += len(encoded_info)
+                    frame_number += 1 # Increment frame number
+
+            avg_bytes_per_vid = total_bytes / frame_number if frame_number else 0
+            print(f"{file}: Total bytes of .mp4 video = {total_bytes}, length of encoded_info bytes = {len(encoded_info)} bytes, average = {avg_bytes_per_vid} bytes per frame")
+
+            # Release the video capture object and close the video file
+            cap.release()
 
 original_input_dir = 'video_data'
 output_dir = 'compressed_videos_output'
@@ -241,7 +284,8 @@ uncomment the below function driver calls when necessary
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
-print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
+# print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
+extract_bytes_from_video(output_dir)
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
@@ -256,6 +300,9 @@ print(f'There are {num_files} files in new_video_frames_dataset directory.')
 
 num_files = len([f for f in os.listdir("compressed_video_frames_output_dataset") if os.path.isfile(os.path.join("compressed_video_frames_output_dataset", f))])
 print(f'There are {num_files} files in compressed_video_frames_output_dataset directory.')
+
+num_files = len([f for f in os.listdir("compressed_video_bytes") if os.path.isfile(os.path.join("compressed_video_bytes", f))])
+print(f'There are {num_files} files in compressed_video_bytes directory.')
 
 filename = 'new_video_numidx_labels.txt'  # replace with your file
 with open(filename, 'r') as file:
