@@ -6,6 +6,7 @@ from PIL import Image
 import numpy as np
 from collections import defaultdict
 import cv2
+import random
 
 '''
 Helper function to get the number of frames in a video file using FFprobe.
@@ -234,7 +235,7 @@ def extract_bytes_from_video(output_videos):
     '''
     Extract bytes from the compressed video files and save them in a text file.
     '''
-    output_directory = 'compressed_video_bytes'
+    output_directory = 'compressed_video_bytes_random_drop'
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
 
@@ -261,16 +262,39 @@ def extract_bytes_from_video(output_videos):
                     encoded_info = cv2.imencode('.jpg', frame)[1].tobytes()
                     # 'encoded_info' now contains the encoded information of the frame
                     f.write(encoded_info)
+
+                    # NOTE: Drop 10% of the bytes randomly (this might break lol)
+                    # encoded_info = drop_data(encoded_info)
+                    # nparr = np.frombuffer(encoded_info, np.uint8)
+                    # img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+                    # cv2.imshow('image', img)
+                    # cv2.waitKey(0)
+                    # cv2.destroyAllWindows()
                     
                     # Process the frame or save the encoded information as needed
-                    total_bytes += len(encoded_info)
+                    total_bytes += len(encoded_info) # NOTE: encoded_info is a bytes object, so calling len() returns the number of bytes (not the # of elements)!
                     frame_number += 1 # Increment frame number
 
             avg_bytes_per_vid = total_bytes / frame_number if frame_number else 0
-            print(f"{file}: Total bytes of .mp4 video = {total_bytes}, length of encoded_info bytes = {len(encoded_info)} bytes, average = {avg_bytes_per_vid} bytes per frame")
+            if file in ['diving7.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse11.mp4', 'riding_horse12.mp4', 'running11.mp4', 'running12.mp4', 'running13.mp4', 'skating11.mp4', 'skating12.mp4', 'swing_bench18.mp4', 'swing_bench19.mp4', 'swing_bench20.mp4']:
+                print(f"{file}: Total bytes of .mp4 video = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
 
             # Release the video capture object and close the video file
             cap.release()
+
+def drop_data(encoded_info):
+    num_bytes_to_drop_out = int(len(encoded_info) * 0.1)
+    indices_to_drop = random.sample(range(len(encoded_info)), num_bytes_to_drop_out)
+
+    encoded_info_np = np.frombuffer(encoded_info, dtype=np.uint8)
+    encoded_info_np = encoded_info_np.copy()
+
+    for idx in indices_to_drop:
+        encoded_info_np[idx] = 0
+    
+    encoded_info = encoded_info_np.tobytes()
+    return encoded_info
 
 original_input_dir = 'video_data'
 output_dir = 'compressed_videos_output'
