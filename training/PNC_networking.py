@@ -7,6 +7,7 @@ from utils.utils_preprocess import boolean_string
 import tensorflow as tf
 import base64
 import socket
+import time
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -115,13 +116,13 @@ if __name__ == "__main__":
                     
     host = "172.22.154.247"
     port = 50000
-    MAX_PAYLOAD = 1000
+    MAX_PAYLOAD = 500
     DELIMITER = b'\xFF\x00\xFF' 
 
     def chunk_data(data, chunk_size):
-    """Chunks data into smaller pieces."""
-    for i in range(0, len(data), chunk_size):
-        yield data[i:i + chunk_size]
+        """Chunks data into smaller pieces."""
+        for i in range(0, len(data), chunk_size):
+            yield data[i:i + chunk_size]
         
     def append_zeros(frame_data, frame_length,newarray):
         expected_bytes = frame_length
@@ -143,19 +144,24 @@ if __name__ == "__main__":
                 encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
                 image_bytes = encoded_data.tobytes() + DELIMITER
                 for chunk in chunk_data(image_bytes, MAX_PAYLOAD):
-                    s_sock.sendto(chunk, (host, port))
+                    time.sleep(3)
+                    try:
+                        s_sock.sendto(chunk, (host, port))
+                    except BrokenPipeError:
+                        print("Broken Pipe detected")
+            s_sock.close()
     elif args.mode == 1:
         #receive the encoded_data of one frame from the sender. The following code assumes the dimension of the encoded_data is the same
         # as while it was sent: (1, 32, 32, 10)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:
-        s_sock.bind((host, port))
-        buffer = b''
-        while True:
-            recv_data, address = s_sock.recvfrom(1024)
-            buffer += recv_data
-            if DELIMITER in buffer:
-                imagebytes, _, buffer = buffer.partition(DELIMITER)
-                image_array= np.frombuffer(imagebytes, dtype=np.float32)
-                image_array = image_array.reshape(1, 32, 32, 10)   
-                decoded_data = decoder.predict(image_array)
-                print(decoded_data.shape)
+            s_sock.bind((host, port))
+            buffer = b''
+            while True:
+                recv_data, address = s_sock.recvfrom(1024)
+                buffer += recv_data
+                if DELIMITER in buffer:
+                    imagebytes, _, buffer = buffer.partition(DELIMITER)
+                    image_array= np.frombuffer(imagebytes, dtype=np.float32)
+                    image_array = image_array.reshape(1, 32, 32, 10)   
+                    decoded_data = decoder.predict(image_array)
+                    print(decoded_data.shape)
