@@ -136,20 +136,31 @@ if __name__ == "__main__":
         return newarray            
             
     encoder, decoder = get_encoder_decoder(model)
+    # if args.mode == 0:
+        
+    #     i = 0 
+    #     for file, input_image, output_image in ae_test_dataset:
+    #         encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
+    #         encoded_data_bytes = encoded_data.tobytes()
+    #         i += 1
+    #         with open('sendfiles/encoded_data'+ str(i) +'.bin', 'wb') as f:
+    #             f.write(encoded_data_bytes)
     #encode the data and send them over the network
     if args.mode == 0:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:        
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:        
             for file, input_image, output_image in ae_test_dataset:
                 #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
                 encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
+                print(encoded_data.shape,type(encoded_data))
                 image_bytes = encoded_data.tobytes() + DELIMITER
                 for chunk in chunk_data(image_bytes, MAX_PAYLOAD):
-                    time.sleep(3)
+                    time.sleep(0.01)
                     try:
                         s_sock.sendto(chunk, (host, port))
                     except BrokenPipeError:
                         print("Broken Pipe detected")
-            s_sock.close()
+        s_sock.sendto(b"closetheconnection", (host, port))                 
+        s_sock.close()
     elif args.mode == 1:
         #receive the encoded_data of one frame from the sender. The following code assumes the dimension of the encoded_data is the same
         # as while it was sent: (1, 32, 32, 10)
