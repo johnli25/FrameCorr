@@ -22,6 +22,7 @@ def def_value():
 
 def extract_info_of_dataset(image_to_label):
     video_info = defaultdict(def_value)
+    class_to_video = defaultdict(list)
     for image_name in image_to_label:
         image_name = image_name[:-4]
         underscore_encountered = False
@@ -37,7 +38,9 @@ def extract_info_of_dataset(image_to_label):
                 break
         # class_name, video_no, frame_no = image_name.split("_")
         video_info[class_name][video_no] += 1
-    return video_info
+        if video_no not in class_to_video[class_name]:
+            class_to_video[class_name].append(video_no)
+    return video_info, class_to_video
 
 def prepare_labels():
     # label
@@ -77,13 +80,13 @@ def train_val_test_split(dataset, train_size, val_size, test_size):
 def create_image_paths(img_folder, data_info, slice_info):
     img_paths = []
     for i, class_name in enumerate(data_info):
-        start, end = slice_info[i][0], slice_info[i][1]
-        for j in range(start, end + 1):
+        # start, end = slice_info[i][0], slice_info[i][1]
+        for j in slice_info[i]:
             for k in range(1, data_info[class_name][str(j)] + 1):
                 img_paths.append(img_folder + "/" + class_name + "_" + str(j) + "_" + str(k).zfill(3) + ".jpg")
     return img_paths
 
-def prepare_data_AE(img_folder, data_info, args, img_size=(224, 224)):
+def prepare_data_AE(img_folder, data_info, class_to_video, args, img_size=(224, 224)):
     train, val, test = [], [], []
     for class_name in data_info:
         number_of_videos = len(data_info[class_name])
@@ -91,10 +94,9 @@ def prepare_data_AE(img_folder, data_info, args, img_size=(224, 224)):
         val_no = int(0.25 * number_of_videos)
         test_no = number_of_videos - train_no - val_no
         
-        train.append([1, train_no])
-        val.append([train_no + 1, train_no + val_no])
-        test.append([train_no + val_no + 1, train_no + val_no + test_no])
-
+        train.append(class_to_video[class_name][:train_no])
+        val.append(class_to_video[class_name][train_no : train_no + val_no])
+        test.append(class_to_video[class_name][train_no + val_no:])
     img_height, img_width = img_size[0], img_size[1]
     # step 1
     train_img_paths = create_image_paths(img_folder, data_info, train)
@@ -463,8 +465,9 @@ if __name__ == "__main__":
     
     # # prepare labels
     image_to_label_map = prepare_labels()#[:50000]
-    data_info = extract_info_of_dataset(image_to_label_map)
-    # print(data_info)
+    data_info, class_to_video = extract_info_of_dataset(image_to_label_map)
+    # print(image_to_label_map)
+    # exit()
 
     # # prepare data
     img_folder = "../new_video_frames_dataset"
@@ -476,7 +479,7 @@ if __name__ == "__main__":
 
     # imagenet_utils=imagenetUtils(size=input_size)
 
-    ae_train_dataset, ae_val_dataset, ae_test_dataset = prepare_data_AE(img_folder, data_info, img_size=input_size, args=args)
+    ae_train_dataset, ae_val_dataset, ae_test_dataset = prepare_data_AE(img_folder, data_info, class_to_video, img_size=input_size, args=args)
     # cls_train_dataset, cls_val_dataset, cls_test_dataset = prepare_data_CLS(img_paths, gts, img_size=input_size)
 
     # for data in ae_test_dataset:
