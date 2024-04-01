@@ -5,6 +5,9 @@ import os, datetime
 from rateless_ae_imagenet import prepare_labels, extract_info_of_dataset, prepare_data_AE, ae_model_loader
 from utils.utils_preprocess import boolean_string
 import tensorflow as tf
+import base64
+import socket
+import time
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -95,15 +98,81 @@ if __name__ == "__main__":
         encoder, decoder = get_encoder_decoder(ae)
 
         return encoder, decoder
-    encoder, decoder = get_encoder_decoder(model)
-    #encode the data and send them over the network
-    if args.mode == 0:        
-        for file, input_image, output_image in ae_test_dataset:
-            #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
-            encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
+    def encoded_data_send():
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
+            s_sock.connect((host,port))
+            s_sock.sendall(data_b64)
+        
+    def decoded_data_recv(host,port,data_b64):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
+            s_sock.bind((host, port))
+            s_sock.listen()
+            iot_sock, address = s_sock.accept()
+            with iot_sock:
+                while True:
+                    recv_data = iot_sock.recv()
+                    if not recv_data:
+                        break 
+                    
+    host = "172.22.154.247"
+    port = 50000
+    MAX_PAYLOAD = 500
+    DELIMITER = b'\xFF\x00\xFF' 
+
+    def chunk_data(data, chunk_size):
+        """Chunks data into smaller pieces."""
+        for i in range(0, len(data), chunk_size):
+            yield data[i:i + chunk_size]
+        
+    def append_zeros(frame_data, frame_length,newarray):
+        expected_bytes = frame_length
+        received_bytes = len(frame_data)
+        missing_bytes = expected_bytes - received_bytes 
+
+        if missing_bytes > 0:
+            zero_padding = np.zeros(missing_bytes, dtype=np.float32) 
+            frame_data = np.concatenate((newarray, zero_padding))
+
+        return newarray            
             
+    encoder, decoder = get_encoder_decoder(model)
+    # if args.mode == 0:
+        
+    #     i = 0 
+    #     for file, input_image, output_image in ae_test_dataset:
+    #         encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
+    #         encoded_data_bytes = encoded_data.tobytes()
+    #         i += 1
+    #         with open('sendfiles/encoded_data'+ str(i) +'.bin', 'wb') as f:
+    #             f.write(encoded_data_bytes)
+    #encode the data and send them over the network
+    if args.mode == 0:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:        
+            for file, input_image, output_image in ae_test_dataset:
+                #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
+                encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
+                print(encoded_data.shape,type(encoded_data))
+                image_bytes = encoded_data.tobytes() + DELIMITER
+                for chunk in chunk_data(image_bytes, MAX_PAYLOAD):
+                    time.sleep(0.01)
+                    try:
+                        s_sock.sendto(chunk, (host, port))
+                    except BrokenPipeError:
+                        print("Broken Pipe detected")
+        s_sock.sendto(b"closetheconnection", (host, port))                 
+        s_sock.close()
     elif args.mode == 1:
         #receive the encoded_data of one frame from the sender. The following code assumes the dimension of the encoded_data is the same
         # as while it was sent: (1, 32, 32, 10)
-        decoded_data = decoder.predict(encoded_data)
-        print(decoded_data.shape)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:
+            s_sock.bind((host, port))
+            buffer = b''
+            while True:
+                recv_data, address = s_sock.recvfrom(1024)
+                buffer += recv_data
+                if DELIMITER in buffer:
+                    imagebytes, _, buffer = buffer.partition(DELIMITER)
+                    image_array= np.frombuffer(imagebytes, dtype=np.float32)
+                    image_array = image_array.reshape(1, 32, 32, 10)   
+                    decoded_data = decoder.predict(image_array)
+                    print(decoded_data.shape)
