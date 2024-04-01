@@ -244,6 +244,7 @@ def extract_bytes_from_video(output_videos):
     for file in os.listdir(output_videos):
         if os.path.isfile(os.path.join(output_videos, file)) and file.lower().endswith('.mp4'):
             video_path = os.path.join(output_videos, file)
+
             cap = cv2.VideoCapture(video_path)
 
             # Check if the video file is opened successfully
@@ -278,8 +279,12 @@ def extract_bytes_from_video(output_videos):
                     frame_number += 1 # Increment frame number
 
             avg_bytes_per_vid = total_bytes / frame_number if frame_number else 0
-            if file in ['diving7.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse11.mp4', 'riding_horse12.mp4', 'running11.mp4', 'running12.mp4', 'running13.mp4', 'skating11.mp4', 'skating12.mp4', 'swing_bench18.mp4', 'swing_bench19.mp4', 'swing_bench20.mp4']:
-                print(f"{file}: Total bytes of .mp4 video = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
+            # if file in ['diving7.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse11.mp4', 'riding_horse12.mp4', 'running11.mp4', 'running12.mp4', 'running13.mp4', 'skating11.mp4', 'skating12.mp4', 'swing_bench18.mp4', 'swing_bench19.mp4', 'swing_bench20.mp4']:
+            if file in ['diving7.mp4', 'diving8.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse8.mp4', 'riding_horse9.mp4', 'running7.mp4', 'running8.mp4', 'running9.mp4', 'skating8.mp4', 'skating9.mp4', 'swing_bench7.mp4', 'swing_bench8.mp4', 'swing_bench9.mp4']:
+                with open(video_path, 'rb') as f:
+                    video_bytes = f.read()
+                # print(f"Total Bytes = {len(video_bytes)} for {file}.")
+                print(f"{file}: Total bytes of all extracted frames = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
 
             # Release the video capture object and close the video file
             cap.release()
@@ -309,8 +314,8 @@ uncomment the below function driver calls when necessary
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
-print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
-# extract_bytes_from_video(output_dir)
+# print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
+extract_bytes_from_video(output_dir)
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
