@@ -1,0 +1,17 @@
+Framediving7 Bytes Received 5738.35409712358 MSE: 2254615
+Framegolffront7 Bytes Received 13536.265999348958 MSE: 2459580
+Framegolffront8 Bytes Received 4266.466153971354 MSE: 2459580
+Framekickfront9 Bytes Received 6761.866126019022 MSE: 942839
+Framekickfront10 Bytes Received 9464.358101222826 MSE: 942839
+Framelifting5 Bytes Received 6733.328801389601 MSE: 5001146
+Framelifting6 Bytes Received 6060.677641997466 MSE: 4550223
+Frameridinghorse11 Bytes Received 10860.561018880207 MSE: 2459580
+Frameridinghorse12 Bytes Received 10810.36376953125 MSE: 2459580
+Framerunning11 Bytes Received 5506.16426156851 MSE: 2664545
+Framerunning12 Bytes Received 5266.847536057692 MSE: 2664545
+Framerunning13 Bytes Received 4927.039152644231 MSE: 2664545
+Frameskating11 Bytes Received 10209.965778459822 MSE: 2869510
+Frameskating12 Bytes Received 12652.504213169643 MSE: 2869510
+Frameswingbench18 Bytes Received 8545.5480078125 MSE: 2049650
+Frameswingbench19 Bytes Received 8376.677255859375 MSE: 2049650
+Frameswingbench20 Bytes Received 10295.9167578125 MSE: 2049650
