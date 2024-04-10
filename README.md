@@ -2,9 +2,9 @@
 
 ### If you have any questions, please contact the first author. To quickly try PNC, the network and the checkpoints are in the `demo_simulation` folder. To train PNC from scratch, please go to `training`.
 
-## Our CS 525 changes + notes (pay attention to this)
+## CS 525 notes
 
-Make sure to have Python packages paramiko, Pillow, and scp installed. You can do so via conda or pip (e.g. `pip install paramiko Pillow scp`)
+
 
 ## Introduction
 
