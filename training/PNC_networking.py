@@ -12,6 +12,10 @@ import sys
 import struct
 import numpy as np
 from collections import defaultdict
+import sys
+import struct
+import numpy as np
+from collections import defaultdict
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -120,6 +124,7 @@ if __name__ == "__main__":
                     
     host = "172.22.154.247"
     port = 50001
+    port = 50001
     MAX_PAYLOAD = 500
     DELIMITER = b'\xFF\x00\xFF' 
 
@@ -139,6 +144,22 @@ if __name__ == "__main__":
 
         return newarray  
                 
+    def get_object_size(obj):
+        return sys.getsizeof(obj)
+    
+    def calculate_SE_per_frame(A,B):
+        return (np.sum((A.numpy() - B) ** 2))
+    
+    def recvall(sock, count):
+        buf = b''
+        while count:
+            newbuf = sock.recv(count)
+            if not newbuf: 
+                return None
+            buf += newbuf
+            count -= len(newbuf)
+        return buf
+    
     def get_object_size(obj):
         return sys.getsizeof(obj)
     
