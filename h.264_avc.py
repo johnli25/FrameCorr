@@ -211,25 +211,25 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
     for key in mse_values:
         mse_values[key] = np.mean(mse_values[key])
 
-    print("mse_values dict length: ", len(mse_values))
-    print(mse_values['diving_7'])
-    print(mse_values['diving_8'])
-    print(mse_values['golf_front_7'])
-    print(mse_values['golf_front_8'])
-    print(mse_values['kick_front_9'])
-    print(mse_values['kick_front_10'])
-    print(mse_values['lifting_5'])
-    print(mse_values['lifting_6'])
-    print(mse_values['riding_horse_8'])
-    print(mse_values['riding_horse_9'])
-    print(mse_values['running_7'])
-    print(mse_values['running_8'])
-    print(mse_values['running_9'])
-    print(mse_values['skating_8'])
-    print(mse_values['skating_9'])
-    print(mse_values['swing_bench_7'])
-    print(mse_values['swing_bench_8'])
-    print(mse_values['swing_bench_9'])
+    # print("mse_values dict length: ", len(mse_values))
+    # print(mse_values['diving_7'])
+    # print(mse_values['diving_8'])
+    # print(mse_values['golf_front_7'])
+    # print(mse_values['golf_front_8'])
+    # print(mse_values['kick_front_9'])
+    # print(mse_values['kick_front_10'])
+    # print(mse_values['lifting_5'])
+    # print(mse_values['lifting_6'])
+    # print(mse_values['riding_horse_8'])
+    # print(mse_values['riding_horse_9'])
+    # print(mse_values['running_7'])
+    # print(mse_values['running_8'])
+    # print(mse_values['running_9'])
+    # print(mse_values['skating_8'])
+    # print(mse_values['skating_9'])
+    # print(mse_values['swing_bench_7'])
+    # print(mse_values['swing_bench_8'])
+    # print(mse_values['swing_bench_9'])
     return mse_values # return average mse_values per vid
 
 def extract_bytes_from_video(output_videos):
@@ -283,24 +283,24 @@ def extract_bytes_from_video(output_videos):
             if file in ['diving7.mp4', 'diving8.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse8.mp4', 'riding_horse9.mp4', 'running7.mp4', 'running8.mp4', 'running9.mp4', 'skating8.mp4', 'skating9.mp4', 'swing_bench7.mp4', 'swing_bench8.mp4', 'swing_bench9.mp4']:
                 with open(video_path, 'rb') as f:
                     video_bytes = f.read()
-                # print(f"Total Bytes = {len(video_bytes)} for {file}.")
+                print(f"Total Bytes = {len(video_bytes)} for {file}.")
                 print(f"{file}: Total bytes of all extracted frames = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
 
             # Release the video capture object and close the video file
             cap.release()
 
-def drop_data(encoded_info):
-    num_bytes_to_drop_out = int(len(encoded_info) * 0.1)
-    indices_to_drop = random.sample(range(len(encoded_info)), num_bytes_to_drop_out)
+# def drop_data(encoded_info):
+#     num_bytes_to_drop_out = int(len(encoded_info) * 0.1)
+#     indices_to_drop = random.sample(range(len(encoded_info)), num_bytes_to_drop_out)
 
-    encoded_info_np = np.frombuffer(encoded_info, dtype=np.uint8)
-    encoded_info_np = encoded_info_np.copy()
+#     encoded_info_np = np.frombuffer(encoded_info, dtype=np.uint8)
+#     encoded_info_np = encoded_info_np.copy()
 
-    for idx in indices_to_drop:
-        encoded_info_np[idx] = 0
+#     for idx in indices_to_drop:
+#         encoded_info_np[idx] = 0
     
-    encoded_info = encoded_info_np.tobytes()
-    return encoded_info
+#     encoded_info = encoded_info_np.tobytes()
+#     return encoded_info
 
 original_input_dir = 'video_data'
 output_dir = 'compressed_videos_output'
