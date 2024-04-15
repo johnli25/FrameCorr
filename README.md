@@ -2,9 +2,13 @@
 
 ### If you have any questions, please contact the first author. To quickly try PNC, the network and the checkpoints are in the `demo_simulation` folder. To train PNC from scratch, please go to `training`.
 
-## Our CS 525 changes + notes (pay attention to this)
+## CS 525 notes
+- activate the virtual env `source iotvenv/bin/activate` for the sender  and `source edgevenv/bin/activate` for the receiver
+- make sure to `sudo yum install iproute-tc` this worked for the illinois vms.
+- add a particular qd depending on network handle, replace or delete existing if necessary `tc qdisc add dev ens33 root tbf rate 1mbit burst 32kbit latency 400ms`
+- if there is an existing qdisc then delete it `tc qdisc del dev ens33 root` and do above command
+- run receiver vm with `python3 PNC_networking.py --mode=1` first and then run sender vm `python3 PNC_networking.py --mode=0`
 
-Make sure to have Python packages paramiko, Pillow, and scp installed. You can do so via conda or pip (e.g. `pip install paramiko Pillow scp`)
 
 ## Introduction
 
