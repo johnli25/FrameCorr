@@ -1,5 +1,6 @@
 import argparse
-from rateless_ae_imagenet import prepare_labels, extract_info_of_dataset
+from rateless_ae_imagenet import prepare_labels, extract_info_of_dataset, ae_model_loader
+from utils.utils_model_pnc import FrameCorr
 import os
 import tensorflow as tf
 
@@ -30,7 +31,7 @@ def get_info_from_image_name(image_name):
     return video, frame_no
 
 
-def prepare_data_FrameCorr(img_folder, data_info, class_to_video, prevFrames, img_size=(224, 224)):
+def prepare_data_FrameCorr(img_folder, data_info, class_to_video, prevFrames, encoder, img_size, args):
     train, val, test = [], [], []
     for class_name in data_info:
         number_of_videos = len(data_info[class_name])
@@ -70,7 +71,8 @@ def prepare_data_FrameCorr(img_folder, data_info, class_to_video, prevFrames, im
         images = []
         for i in range(prevFrames + 1):
             image = read_image(image_files[i])
-            images.append(image)
+            compressed_data = encoder(tf.expand_dims(image, axis=0))
+            images.append(compressed_data)
         return images
         # Get index of current image file
         # video, frame_no = get_info_from_image_name(image_file)
@@ -87,18 +89,42 @@ def prepare_data_FrameCorr(img_folder, data_info, class_to_video, prevFrames, im
         # else:
         #     return [None for _ in range(prevFrames)]
 
-    train_dataset = train_dataset.map(lambda x: (get_predecessor_images(x))).batch(args.batch_size)
+    train_dataset = train_dataset.map(lambda x: get_predecessor_images(x)).batch(args.batch_size)
+    # train_dataset = train_dataset.map(lambda x : x)#.batch(args.batch_size)
     val_dataset = val_dataset.map(lambda x: (get_predecessor_images(x))).batch(args.batch_size)
     # test_dataset = test_dataset.map(_parse_function_ae_test)#.batch(args.batch_size)
     # train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
     
     return train_dataset, val_dataset#, test_dataset
 
+def get_encoder_decoder(autoencoder):
+        decoder_input_index = None
+        layerName = 'decoder'
+        for idx, layer in enumerate(autoencoder.layers):
+            if layer.name == layerName:
+                decoder_input_index = idx
+                break
+
+        # print(decoder_input_index)
+                
+        # encoder = keras.Model(autoencoder.input, autoencoder.get_layer(name = 'encoder').output, name='encoder1')
+        encoder = tf.keras.Sequential(name='encoder1')
+        for layer in autoencoder.layers[:decoder_input_index]:
+            encoder.add(layer)
+        decoder = tf.keras.Sequential(name='decoder1')
+        for layer in autoencoder.layers[decoder_input_index:]:
+            decoder.add(layer)
+
+        return encoder, decoder
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--prev_frames', type=int, default=2)
     parser.add_argument('--input_size', type=int, default=224, help='Size of the input images.')
     parser.add_argument('--batch_size', type=int, default=4, help='Batch size for training.')
+    parser.add_argument('--model', type=str, default='PNC', help='Folder to save the model.')
+    parser.add_argument('--ae_path', type=str, default='saved_models/default', help='Folder to save the model.')
+    parser.add_argument('--joint_path', type=str, default='saved_models/default', help='Folder to save the model.')
     args = parser.parse_args()
 
     # # prepare labels
@@ -113,6 +139,19 @@ if __name__ == "__main__":
 
     input_size = (args.input_size, args.input_size)
 
-    train_dataset, val_dataset = prepare_data_FrameCorr(img_folder, data_info, class_to_video, args.prev_frames, img_size=input_size)
+    ae_path = args.ae_path
+    joint_path = args.joint_path
+    ModelObject = ae_model_loader(args.model)
+    model = ModelObject(out_size=10).asym_ae(tailDrop=False)
+    if os.path.exists(ae_path):
+        model_load_path = tf.train.latest_checkpoint(ae_path)
+        if model_load_path is not None:
+            model.load_weights(model_load_path)
+    
+    encoder, decoder = get_encoder_decoder(model)
 
-    print(len(train_dataset), len(val_dataset))
+    train_dataset, val_dataset = prepare_data_FrameCorr(img_folder, data_info, class_to_video, args.prev_frames, encoder, input_size, args)
+
+    frame_corr = FrameCorr(10, args.prev_frames).frame_corr()
+
+    frame_corr.summary()
