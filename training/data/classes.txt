@@ -1,0 +1,8 @@
+running 0
+skating 1
+kick_front 2
+riding_horse 3
+golf_front 4
+swing_bench 5
+diving 6
+lifting 7

@@ -438,6 +438,7 @@ if __name__ == "__main__":
     parser.add_argument('--gpu_id', type=str, default='0', help='GPU id.')
     parser.add_argument('--if_mem_constr', type=boolean_string, default=True, help='GPU memory growth.')
     parser.add_argument('--restart_training', type=boolean_string, default=False, help='If start from scratch.')
+    parser.add_argument('--tail_drop', type=int, default=0, help='Number of features from tail to drop.')
     args = parser.parse_args()
     
     
@@ -614,6 +615,9 @@ if __name__ == "__main__":
         frame_per_video = defaultdict(def_value_1)
         for file, input_image, output_image in ae_test_dataset:
             predicted_image = model.predict(tf.expand_dims(input_image, axis=0))
+            # for i in range(args.tail_drop):
+            if args.tail_drop != 0:
+                predicted_image[:,:,:,-args.tail_drop:] = 0
             mse = tf.reduce_sum(tf.math.square(predicted_image - output_image), axis=None)
             video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
             mse_per_video[video] += mse
