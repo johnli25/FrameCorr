@@ -11,9 +11,10 @@ from tensorflow.keras import models
 import logging
 # import tensorflow_compression as tfc
 class TailDropout:
-    def __init__(self, func='uniform', shape=(None, None, None)):
+    def __init__(self, name, func='uniform', shape=(None, None, None)):
         self.func = func
         self.shape = shape
+        self.name = name
 
     def dropout_uniform(self):
         X_init = layers.Input(shape=self.shape)
@@ -24,7 +25,7 @@ class TailDropout:
                           tf.zeros((tf.shape(X_init)[1], tf.shape(X_init)[2], tail_len[0]))), axis=-1)
         X = X_init * mask
 
-        tail_drop = models.Model(X_init, X, name='TailDrop_Uniform')
+        tail_drop = models.Model(X_init, X, name=self.name)
 
         return tail_drop
 
@@ -55,9 +56,10 @@ class TailDropout:
             return self.dropout_nonequal_uniform()
 
 class TailDropout1D:
-    def __init__(self, func='uniform', shape=(None, None)):
+    def __init__(self, func='uniform', name='TailDrop_Uniform', shape=(None, None)):
         self.func = func
         self.shape = shape
+        self.name = name
         print(shape, "======")
 
     def dropout_uniform(self):
@@ -69,7 +71,7 @@ class TailDropout1D:
                           tf.zeros((tf.shape(X_init)[1], tail_len[0]))), axis=-1)
         X = X_init * mask
 
-        tail_drop = models.Model(X_init, X, name='TailDrop_Uniform')
+        tail_drop = models.Model(X_init, X, name=self.name)
 
         return tail_drop
 # class evaluate_ae_cls:

@@ -1,4 +1,0 @@
-[2024-03-30 14:54:12,291]INFO|PNC_networking|<module>: Namespace(ae_path='saved_models/default', batch_size=4, gpu_id='0', input_size=224, joint_path='saved_models/default', log_save_path='./', mode=0, model='PNC', restart_training=False)
-[2024-03-30 14:54:12,732]INFO|utils_model_pnc|asym_ae: <<<<<<<<<<<<<<<<<< RAND TAIL DROP ON >>>>>>>>>>>>>>>>>>>>>>>>
-[2024-03-30 14:54:12,987]INFO|PNC_networking|<module>: <<<<<<<<<<<<<<<<<< LOAD PREVIOUS MODEL >>>>>>>>>>>>>>>>>>>>>>>>
-[2024-03-30 14:54:12,995]INFO|PNC_networking|<module>:     >>> restored from saved_models/default/last_checkpoint

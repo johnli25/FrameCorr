@@ -125,7 +125,35 @@ class AsymAE_two_conv(AsymAE):
 
         return autoencoder
 
+class FrameCorr():
+    def __init__(self, no_of_frames, out_size):
+        self.no_of_frames = no_of_frames
+        self.out_size = out_size
+    def frame_corr(self):
+        x_i = layers.Input(shape=(self.no_of_frames, None, None, self.out_size))
+        separated_frames = tf.unstack(x_i, axis=1)
+        dropped_out_frames = []
+        for i, frame in enumerate(separated_frames):
+            dropped_out_frame = TailDropout(name="Dropout_" + str(i)).dropout_uniform()(frame)
+            dropped_out_frames.append(dropped_out_frame)
+        concatenated = tf.add(dropped_out_frames, 0)
+        # input = []
+        # tailDropouts = []
+        # for i in range(self.no_of_frames):
+        #     x_i = layers.Input(shape=(self.frame_size,))
+        #     input.append(x_i)
+        #     tailDropouts.append(TailDropout1D(name="TailDrop" + str(i)).dropout_uniform()(x_i))
+        # concatenated = tf.keras.layers.Concatenate(axis=-1)(tailDropouts)
 
+        dense1 = tf.keras.layers.Dense(32, activation='relu')
+        output1 = dense1(concatenated)
+
+        dense2 = tf.keras.layers.Dense(self.out_size, activation='sigmoid')
+        output2 = dense2(output1)
+
+        model = models.Model(x_i, output2)
+
+        return model
 
 
 class AsymAE_two_conv_PNC(AsymAE):

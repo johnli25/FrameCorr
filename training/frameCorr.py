@@ -3,6 +3,9 @@ from rateless_ae_imagenet import prepare_labels, extract_info_of_dataset, ae_mod
 from utils.utils_model_pnc import FrameCorr
 import os
 import tensorflow as tf
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from utils.tf_helper import ModelState, MetricLogger
+import numpy as np
 
 def create_image_paths(img_folder, data_info, slice_info, prev_frames):
     img_paths = []
@@ -53,12 +56,12 @@ def prepare_data_FrameCorr(img_folder, data_info, class_to_video, prevFrames, en
     test_img_paths = tf.constant(test_img_paths)
 
     # # step 2: create a dataset returning slices of `filenames`
-    train_dataset = tf.data.Dataset.from_tensor_slices(train_img_paths)
-    val_dataset = tf.data.Dataset.from_tensor_slices(val_img_paths)
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_img_paths))
+    val_dataset = tf.data.Dataset.from_tensor_slices((val_img_paths))
     test_dataset = tf.data.Dataset.from_tensor_slices((test_img_paths))
 
     def read_image(filename):
-        print(filename)
+        # print(filename)
         image_string = tf.io.read_file(filename)
         image_decoded = tf.image.decode_jpeg(image_string, channels=3)
         image = tf.cast(image_decoded, tf.float32)
@@ -71,9 +74,9 @@ def prepare_data_FrameCorr(img_folder, data_info, class_to_video, prevFrames, en
         images = []
         for i in range(prevFrames + 1):
             image = read_image(image_files[i])
-            compressed_data = encoder(tf.expand_dims(image, axis=0))
+            compressed_data = encoder(tf.expand_dims(image, axis=0))[0]
             images.append(compressed_data)
-        return images
+        return images[:-1], images[-1]
         # Get index of current image file
         # video, frame_no = get_info_from_image_name(image_file)
         # print(video, frame_no)
@@ -119,12 +122,17 @@ def get_encoder_decoder(autoencoder):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=int, default=0, help='0 for training, 1 for inference.')
     parser.add_argument('--prev_frames', type=int, default=2)
     parser.add_argument('--input_size', type=int, default=224, help='Size of the input images.')
     parser.add_argument('--batch_size', type=int, default=4, help='Batch size for training.')
     parser.add_argument('--model', type=str, default='PNC', help='Folder to save the model.')
     parser.add_argument('--ae_path', type=str, default='saved_models/default', help='Folder to save the model.')
+    parser.add_argument('--framecorr_path', type=str, default='saved_models/frame_corr', help='Folder to save the model.')
     parser.add_argument('--joint_path', type=str, default='saved_models/default', help='Folder to save the model.')
+    parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate of training.')
+    parser.add_argument('--epochs', type=int, default=5, help='Number of epochs for training.')
+    parser.add_argument('--out_size', type=int, default=10, help='Compressed frame size.')
     args = parser.parse_args()
 
     # # prepare labels
@@ -142,7 +150,7 @@ if __name__ == "__main__":
     ae_path = args.ae_path
     joint_path = args.joint_path
     ModelObject = ae_model_loader(args.model)
-    model = ModelObject(out_size=10).asym_ae(tailDrop=False)
+    model = ModelObject(out_size=args.out_size).asym_ae(tailDrop=False)
     if os.path.exists(ae_path):
         model_load_path = tf.train.latest_checkpoint(ae_path)
         if model_load_path is not None:
@@ -151,7 +159,68 @@ if __name__ == "__main__":
     encoder, decoder = get_encoder_decoder(model)
 
     train_dataset, val_dataset = prepare_data_FrameCorr(img_folder, data_info, class_to_video, args.prev_frames, encoder, input_size, args)
+    
+    # Get the first batch from the train_dataset
+    # first_batch = next(iter(val_dataset))
 
-    frame_corr = FrameCorr(10, args.prev_frames).frame_corr()
+    # # Extract predecessor_images and successor_image from the first batch
+    # predecessor_images, successor_image = first_batch
+
+    # # Get the shape of predecessor_images and successor_image
+    # print("Shape of predecessor_images:", predecessor_images.shape)
+    # print("Shape of successor_image:", successor_image.shape)
+
+    frame_corr = FrameCorr(args.prev_frames, args.out_size).frame_corr()
 
     frame_corr.summary()
+
+    if args.mode == 0:
+        last_model_path = os.path.join(args.framecorr_path, "last_checkpoint")
+        best_model_path = os.path.join(args.framecorr_path, "best_checkpoint")
+
+        checkpoint = ModelCheckpoint(
+                best_model_path+"_epoch_{epoch:03d}_val_loss_{val_loss:.4f}", 
+                monitor='val_loss', 
+                verbose=1, 
+                save_best_only=True, 
+                save_weights_only=True, 
+                mode='min'
+            )
+        checkpoint_last = ModelCheckpoint(
+            last_model_path, 
+            monitor='val_loss', 
+            verbose=1, 
+            save_weights_only=True, 
+        )
+
+        model_state = ModelState(os.path.join(args.framecorr_path,"state.json"), ['val_loss'], [tf.math.less])
+        metricloggercallback = MetricLogger(monitor='val_loss', monitor_op=tf.math.less, best=np.inf)
+
+        if  model_state.state['best_values']:
+            checkpoint.best = model_state.state['best_values']['val_loss']
+            metricloggercallback.best = model_state.state['best_values']['val_loss']
+        def lr_step_decay(epoch, lr):
+            if epoch != 0 and epoch % 10 == 0:
+                return lr*0.3
+            return lr
+        
+        train_dataset.cache()
+        val_dataset.cache()
+
+        frame_corr.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=args.learning_rate), loss="MSE")
+
+        frame_corr.fit(
+            train_dataset,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            shuffle=True,
+            callbacks=[
+                tf.keras.callbacks.LearningRateScheduler(lr_step_decay, verbose=1),
+                checkpoint, 
+                checkpoint_last,
+                model_state,
+                metricloggercallback, 
+            ],
+            validation_data=val_dataset,
+            initial_epoch=model_state.state['epoch_count']-1
+        )
