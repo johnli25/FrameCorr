@@ -109,7 +109,7 @@ def extract_bytes_from_video(output_videos):
                     if not ret: break
 
                     # Get the encoded information of the frame
-                    encoded_info = cv2.imencode('.jpg', frame)[1].tobytes()
+                    encoded_info = cv2.imencode('.jpg', frame)[1]
                     # 'encoded_info' now contains the encoded information of the frame
                     f.write(encoded_info)
 
@@ -127,7 +127,6 @@ def extract_bytes_from_video(output_videos):
                     frame_number += 1 # Increment frame number
 
             avg_bytes_per_vid = total_bytes / frame_number if frame_number else 0
-            # if file in ['diving7.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse11.mp4', 'riding_horse12.mp4', 'running11.mp4', 'running12.mp4', 'running13.mp4', 'skating11.mp4', 'skating12.mp4', 'swing_bench18.mp4', 'swing_bench19.mp4', 'swing_bench20.mp4']:
             if file in ['diving7.mp4', 'diving8.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse8.mp4', 'riding_horse9.mp4', 'running7.mp4', 'running8.mp4', 'running9.mp4', 'skating8.mp4', 'skating9.mp4', 'swing_bench7.mp4', 'swing_bench8.mp4', 'swing_bench9.mp4']:
                 with open(video_path, 'rb') as f:
                     video_bytes = f.read()

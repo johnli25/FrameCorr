@@ -6,7 +6,7 @@ import re
 from PIL import Image
 import numpy as np
 from collections import defaultdict
-# import cv2
+import cv2
 import random
 import imageio
 
@@ -247,23 +247,27 @@ def extract_bytes_from_video(output_videos):
         if os.path.isfile(os.path.join(output_videos, file)) and file.lower().endswith('.mp4'):
             video_path = os.path.join(output_videos, file)
 
-            # cap = cv2.VideoCapture(video_path)
+            cap = cv2.VideoCapture(video_path)
 
-            # # Check if the video file is opened successfully
-            # if not cap.isOpened():
-            #     print("Error: Could not open the video file.")
-            #     exit()
+            # Check if the video file is opened successfully
+            if not cap.isOpened():
+                print("Error: Could not open the video file.")
+                exit()
             reader = imageio.get_reader(video_path)
             total_bytes = 0
             output_filepath = os.path.join(output_directory, f"{os.path.splitext(file)[0]}.txt")
             with open(output_filepath, 'wb') as f:
                 frame_number = 0
-                for i, frame in enumerate(reader):
-                    img = Image.fromarray(frame)
-                    encoded_info = img.tobytes()
+                # for i, frame in enumerate(reader):
+                #     img = Image.fromarray(frame)
+                #     encoded_info = img.tobytes()
+                while cap.isOpened():
+                    ret, frame = cap.read()
+
+                    if not ret: break
 
                     # Get the encoded information of the frame
-                    # encoded_info = cv2.imencode('.jpg', frame)[1].tobytes()
+                    encoded_info = cv2.imencode('.jpg', frame)[1]
                     # 'encoded_info' now contains the encoded information of the frame
                     f.write(encoded_info)
                     
@@ -280,11 +284,113 @@ def extract_bytes_from_video(output_videos):
                 print(f"{file}: Total bytes of all extracted frames = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
 
             # Release the video capture object and close the video file
-            # cap.release()
+            cap.release()
+
+def extract_bytes_from_video_frames(output_video_frames):
+    bytes_dict = defaultdict(list)
+    for file in os.listdir(output_video_frames):
+        if os.path.isfile(os.path.join(output_video_frames, file)) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
+            video_name = file.split('_')[:-1]
+            video_name = '_'.join(video_name)
+            frame_path = os.path.join(output_video_frames, file)
+            with open(frame_path, 'rb') as f:
+                frame_bytes = f.read()
+            bytes_dict[video_name].append(len(frame_bytes))
+    
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['diving_7']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in diving_7: ", len(bytes_dict['diving_7']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['diving_7']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['diving_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in diving_8: ", len(bytes_dict['diving_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['diving_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['golf_front_7']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in golf_front_7: ", len(bytes_dict['golf_front_7']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['golf_front_7']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['golf_front_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in golf_front_8: ", len(bytes_dict['golf_front_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['golf_front_8']), "\n")
+    
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['kick_front_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in kick_front_9: ", len(bytes_dict['kick_front_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['kick_front_9']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['kick_front_10']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in kick_front_10: ", len(bytes_dict['kick_front_10']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['kick_front_10']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['lifting_5']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in lifting_5: ", len(bytes_dict['lifting_5']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['lifting_5']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['lifting_6']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in lifting_6: ", len(bytes_dict['lifting_6']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['lifting_6']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['riding_horse_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in riding_horse_8: ", len(bytes_dict['riding_horse_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['riding_horse_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['riding_horse_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in riding_horse_9: ", len(bytes_dict['riding_horse_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['riding_horse_9']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['running_7']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in running_7: ", len(bytes_dict['running_7']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['running_7']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['running_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in running_8: ", len(bytes_dict['running_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['running_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['running_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in running_9: ", len(bytes_dict['running_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['running_9']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['skating_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in skating_8: ", len(bytes_dict['skating_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['skating_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['skating_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in skating_9: ", len(bytes_dict['skating_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['skating_9']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['swing_bench_7']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in swing_bench_7: ", len(bytes_dict['swing_bench_7']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['swing_bench_7']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['swing_bench_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in swing_bench_8: ", len(bytes_dict['swing_bench_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['swing_bench_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['swing_bench_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in swing_bench_9: ", len(bytes_dict['swing_bench_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['swing_bench_9']), "\n")
+
 
 original_input_dir = 'video_data'
 # output_dir = 'compressed_videos_output'
-output_dir = 'compressed_videos_output_crf30'
+output_dir = 'compressed_videos_output'
 home_dir = os.getcwd()
 
 start_time = time.time()
@@ -295,8 +401,9 @@ uncomment the below function driver calls when necessary
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
-print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
+# print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
 # extract_bytes_from_video(output_dir)
+extract_bytes_from_video_frames('compressed_video_frames_output_dataset')
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
