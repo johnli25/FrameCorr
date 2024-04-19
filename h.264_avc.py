@@ -1,3 +1,4 @@
+
 import os
 import subprocess
 import time
@@ -5,8 +6,9 @@ import re
 from PIL import Image
 import numpy as np
 from collections import defaultdict
-import cv2
+# import cv2
 import random
+import imageio
 
 '''
 Helper function to get the number of frames in a video file using FFprobe.
@@ -236,7 +238,7 @@ def extract_bytes_from_video(output_videos):
     '''
     Extract bytes from the compressed video files and save them in a text file.
     '''
-    output_directory = 'compressed_video_bytes_random_drop'
+    output_directory = 'compressed_video_bytes'
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
 
@@ -245,34 +247,25 @@ def extract_bytes_from_video(output_videos):
         if os.path.isfile(os.path.join(output_videos, file)) and file.lower().endswith('.mp4'):
             video_path = os.path.join(output_videos, file)
 
-            cap = cv2.VideoCapture(video_path)
+            # cap = cv2.VideoCapture(video_path)
 
-            # Check if the video file is opened successfully
-            if not cap.isOpened():
-                print("Error: Could not open the video file.")
-                exit()
+            # # Check if the video file is opened successfully
+            # if not cap.isOpened():
+            #     print("Error: Could not open the video file.")
+            #     exit()
+            reader = imageio.get_reader(video_path)
             total_bytes = 0
             output_filepath = os.path.join(output_directory, f"{os.path.splitext(file)[0]}.txt")
             with open(output_filepath, 'wb') as f:
                 frame_number = 0
-                while cap.isOpened():
-                    ret, frame = cap.read()
-
-                    if not ret: break
+                for i, frame in enumerate(reader):
+                    img = Image.fromarray(frame)
+                    encoded_info = img.tobytes()
 
                     # Get the encoded information of the frame
-                    encoded_info = cv2.imencode('.jpg', frame)[1].tobytes()
+                    # encoded_info = cv2.imencode('.jpg', frame)[1].tobytes()
                     # 'encoded_info' now contains the encoded information of the frame
                     f.write(encoded_info)
-
-                    # NOTE: Drop 10% of the bytes randomly (this might break lol)
-                    # encoded_info = drop_data(encoded_info)
-                    # nparr = np.frombuffer(encoded_info, np.uint8)
-                    # img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-                    # cv2.imshow('image', img)
-                    # cv2.waitKey(0)
-                    # cv2.destroyAllWindows()
                     
                     # Process the frame or save the encoded information as needed
                     total_bytes += len(encoded_info) # NOTE: encoded_info is a bytes object, so calling len() returns the number of bytes (not the # of elements)!
@@ -287,20 +280,7 @@ def extract_bytes_from_video(output_videos):
                 print(f"{file}: Total bytes of all extracted frames = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
 
             # Release the video capture object and close the video file
-            cap.release()
-
-# def drop_data(encoded_info):
-#     num_bytes_to_drop_out = int(len(encoded_info) * 0.1)
-#     indices_to_drop = random.sample(range(len(encoded_info)), num_bytes_to_drop_out)
-
-#     encoded_info_np = np.frombuffer(encoded_info, dtype=np.uint8)
-#     encoded_info_np = encoded_info_np.copy()
-
-#     for idx in indices_to_drop:
-#         encoded_info_np[idx] = 0
-    
-#     encoded_info = encoded_info_np.tobytes()
-#     return encoded_info
+            # cap.release()
 
 original_input_dir = 'video_data'
 # output_dir = 'compressed_videos_output'
@@ -314,7 +294,7 @@ uncomment the below function driver calls when necessary
 # create_new_input_frames(original_input_dir, 'new_video_frames_dataset')
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
-# create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset_crf30')
+# create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
 print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
 # extract_bytes_from_video(output_dir)
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
