@@ -24,7 +24,7 @@ def get_number_of_frames(video_file_path):
     return int(output)
 
 
-def compress_videos(input_directory, output_directory, codec='libx264', crf=23, preset='medium'):
+def compress_videos(input_directory, output_directory, codec='libx264', crf=30, preset='medium'):
     """
     (Encoding) Compress all .avi files in the input_directory using H.264 AVC codec with FFmpeg.
     
@@ -212,24 +212,24 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
         mse_values[key] = np.mean(mse_values[key])
 
     # print("mse_values dict length: ", len(mse_values))
-    # print(mse_values['diving_7'])
-    # print(mse_values['diving_8'])
-    # print(mse_values['golf_front_7'])
-    # print(mse_values['golf_front_8'])
-    # print(mse_values['kick_front_9'])
-    # print(mse_values['kick_front_10'])
-    # print(mse_values['lifting_5'])
-    # print(mse_values['lifting_6'])
-    # print(mse_values['riding_horse_8'])
-    # print(mse_values['riding_horse_9'])
-    # print(mse_values['running_7'])
-    # print(mse_values['running_8'])
-    # print(mse_values['running_9'])
-    # print(mse_values['skating_8'])
-    # print(mse_values['skating_9'])
-    # print(mse_values['swing_bench_7'])
-    # print(mse_values['swing_bench_8'])
-    # print(mse_values['swing_bench_9'])
+    print(mse_values['diving_7'])
+    print(mse_values['diving_8'])
+    print(mse_values['golf_front_7'])
+    print(mse_values['golf_front_8'])
+    print(mse_values['kick_front_9'])
+    print(mse_values['kick_front_10'])
+    print(mse_values['lifting_5'])
+    print(mse_values['lifting_6'])
+    print(mse_values['riding_horse_8'])
+    print(mse_values['riding_horse_9'])
+    print(mse_values['running_7'])
+    print(mse_values['running_8'])
+    print(mse_values['running_9'])
+    print(mse_values['skating_8'])
+    print(mse_values['skating_9'])
+    print(mse_values['swing_bench_7'])
+    print(mse_values['swing_bench_8'])
+    print(mse_values['swing_bench_9'])
     return mse_values # return average mse_values per vid
 
 def extract_bytes_from_video(output_videos):
@@ -303,7 +303,8 @@ def extract_bytes_from_video(output_videos):
 #     return encoded_info
 
 original_input_dir = 'video_data'
-output_dir = 'compressed_videos_output'
+# output_dir = 'compressed_videos_output'
+output_dir = 'compressed_videos_output_crf30'
 home_dir = os.getcwd()
 
 start_time = time.time()
@@ -313,9 +314,9 @@ uncomment the below function driver calls when necessary
 # create_new_input_frames(original_input_dir, 'new_video_frames_dataset')
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
-# create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
-# print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
-extract_bytes_from_video(output_dir)
+# create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset_crf30')
+print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
+# extract_bytes_from_video(output_dir)
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
