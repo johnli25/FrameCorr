@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     # # prepare labels
     image_to_label_map = prepare_labels()#[:50000]
-    data_info = extract_info_of_dataset(image_to_label_map)
+    data_info, class_to_video = extract_info_of_dataset(image_to_label_map)
     # print(data_info)
 
     # # prepare data
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     # imagenet_utils=imagenetUtils(size=input_size)
 
-    ae_train_dataset, ae_val_dataset, ae_test_dataset = prepare_data_AE(img_folder, data_info, img_size=input_size, args=args)
+    ae_train_dataset, ae_val_dataset, ae_test_dataset = prepare_data_AE(img_folder, data_info, class_to_video, img_size=input_size, args=args)
     # cls_train_dataset, cls_val_dataset, cls_test_dataset = prepare_data_CLS(img_paths, gts, img_size=input_size)
 
     # for data in ae_test_dataset:
