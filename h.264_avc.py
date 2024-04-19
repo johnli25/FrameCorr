@@ -214,24 +214,24 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
         mse_values[key] = np.mean(mse_values[key])
 
     # print("mse_values dict length: ", len(mse_values))
-    # print(mse_values['diving_7'])
-    # print(mse_values['diving_8'])
-    # print(mse_values['golf_front_7'])
-    # print(mse_values['golf_front_8'])
-    # print(mse_values['kick_front_9'])
-    # print(mse_values['kick_front_10'])
-    # print(mse_values['lifting_5'])
-    # print(mse_values['lifting_6'])
-    # print(mse_values['riding_horse_8'])
-    # print(mse_values['riding_horse_9'])
-    # print(mse_values['running_7'])
-    # print(mse_values['running_8'])
-    # print(mse_values['running_9'])
-    # print(mse_values['skating_8'])
-    # print(mse_values['skating_9'])
-    # print(mse_values['swing_bench_7'])
-    # print(mse_values['swing_bench_8'])
-    # print(mse_values['swing_bench_9'])
+    print(mse_values['diving_7'])
+    print(mse_values['diving_8'])
+    print(mse_values['golf_front_7'])
+    print(mse_values['golf_front_8'])
+    print(mse_values['kick_front_9'])
+    print(mse_values['kick_front_10'])
+    print(mse_values['lifting_5'])
+    print(mse_values['lifting_6'])
+    print(mse_values['riding_horse_8'])
+    print(mse_values['riding_horse_9'])
+    print(mse_values['running_7'])
+    print(mse_values['running_8'])
+    print(mse_values['running_9'])
+    print(mse_values['skating_8'])
+    print(mse_values['skating_9'])
+    print(mse_values['swing_bench_7'])
+    print(mse_values['swing_bench_8'])
+    print(mse_values['swing_bench_9'])
     return mse_values # return average mse_values per vid
 
 def extract_bytes_from_video(output_videos):
@@ -282,19 +282,6 @@ def extract_bytes_from_video(output_videos):
             # Release the video capture object and close the video file
             # cap.release()
 
-# def drop_data(encoded_info):
-#     num_bytes_to_drop_out = int(len(encoded_info) * 0.1)
-#     indices_to_drop = random.sample(range(len(encoded_info)), num_bytes_to_drop_out)
-
-#     encoded_info_np = np.frombuffer(encoded_info, dtype=np.uint8)
-#     encoded_info_np = encoded_info_np.copy()
-
-#     for idx in indices_to_drop:
-#         encoded_info_np[idx] = 0
-    
-#     encoded_info = encoded_info_np.tobytes()
-#     return encoded_info
-
 original_input_dir = 'video_data'
 output_dir = 'compressed_videos_output'
 home_dir = os.getcwd()
@@ -307,8 +294,8 @@ uncomment the below function driver calls when necessary
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
-# print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
-extract_bytes_from_video(output_dir)
+print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
+# extract_bytes_from_video(output_dir)
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
