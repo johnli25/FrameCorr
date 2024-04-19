@@ -9,6 +9,7 @@ from collections import defaultdict
 # import cv2
 import random
 import imageio
+from io import BytesIO
 
 '''
 Helper function to get the number of frames in a video file using FFprobe.
@@ -260,7 +261,9 @@ def extract_bytes_from_video(output_videos):
                 frame_number = 0
                 for i, frame in enumerate(reader):
                     img = Image.fromarray(frame)
-                    encoded_info = img.tobytes()
+                    buffered = BytesIO()
+                    img.save(buffered, format="JPEG")
+                    encoded_info = buffered.getvalue()
 
                     # Get the encoded information of the frame
                     # encoded_info = cv2.imencode('.jpg', frame)[1].tobytes()
@@ -294,8 +297,8 @@ uncomment the below function driver calls when necessary
 # create_new_labels_txt('new_video_frames_dataset')
 # compress_videos(original_input_dir, output_dir)
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
-print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
-# extract_bytes_from_video(output_dir)
+# print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
+extract_bytes_from_video(output_dir)
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
