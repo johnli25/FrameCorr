@@ -6,10 +6,8 @@ import re
 from PIL import Image
 import numpy as np
 from collections import defaultdict
-import cv2
+# import cv2
 import random
-import imageio
-from io import BytesIO
 
 '''
 Helper function to get the number of frames in a video file using FFprobe.
@@ -415,9 +413,6 @@ print(f'There are {num_files} files in new_video_frames_dataset directory.')
 
 num_files = len([f for f in os.listdir("compressed_video_frames_output_dataset") if os.path.isfile(os.path.join("compressed_video_frames_output_dataset", f))])
 print(f'There are {num_files} files in compressed_video_frames_output_dataset directory.')
-
-num_files = len([f for f in os.listdir("compressed_video_bytes") if os.path.isfile(os.path.join("compressed_video_bytes", f))])
-print(f'There are {num_files} files in compressed_video_bytes directory.')
 
 filename = 'new_video_numidx_labels.txt'  # replace with your file
 with open(filename, 'r') as file:
