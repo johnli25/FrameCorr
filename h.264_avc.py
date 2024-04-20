@@ -361,7 +361,7 @@ uncomment the below function driver calls when necessary
 '''
 # create_new_input_frames(original_input_dir, 'new_video_frames_dataset')
 # create_new_labels_txt('new_video_frames_dataset')
-compress_videos(original_input_dir, output_dir)
+# compress_videos(original_input_dir, output_dir)
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
 # print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
 extract_bytes_from_video(output_dir) 
