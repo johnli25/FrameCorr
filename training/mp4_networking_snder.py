@@ -3,6 +3,7 @@ import os
 import socket
 import struct
 import sys
+import time
 
 host = "172.22.154.247"
 port = 50013

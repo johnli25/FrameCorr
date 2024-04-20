@@ -1,7 +1,8 @@
 import os
 import socket
 import struct
-from .. import h.264_avc.py
+import time 
+#from .. import h.264_avc.py
 def recvall(sock, count):
     buf = b''
     while count:
@@ -37,11 +38,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
     # length_bytes = sock_conn.recv(4)
     # video_length = struct.unpack('!I', length_bytes)[0]
     #sock_conn.send(b'received') 
-    output_folder = "/home/deepakn3/Progressive-Neural-Compression/send_vids"
+    output_folder = "/home/deepakn3/Progressive-Neural-Compression/received_mp4s_test"
     print(next(file_iter))
     output_filename = next(file_iter)
     output_path = os.path.join(output_folder, output_filename)
     buffer = b''
+    start = time.perf_counter()
     while True:
         with open(output_path, 'ab+') as f:
             print(output_path)
@@ -60,9 +62,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
                 break    
             output_path = os.path.join(output_folder, output_filename)
     sock_conn.close()
-    
-metrics_input_folder = "/home/deepakn3/Progressive-Neural-Compression/send_vids"
-create_decoded_output_frames(metrics_input_folder, output_frames_directory):
+    end = time.perf_counter()
+    duration = end - start
+    print(f"Code execution time: {duration:.6f} seconds") 
+#metrics_input_folder = "/home/deepakn3/Progressive-Neural-Compression/send_vids"
+#create_decoded_output_frames(metrics_input_folder, output_frames_directory):
     
 # host = "172.22.154.247"
 # port = 50013

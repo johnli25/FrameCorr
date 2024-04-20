@@ -223,26 +223,6 @@ if __name__ == "__main__":
                 s_sock.close()
             i = 0
             
-<<<<<<< Updated upstream
-            with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
-                MSE = defaultdict(list)
-                bytes_transfer = defaultdict(list)
-                for file, input_image, output_image in ae_test_dataset:
-                    video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-                    print(str(video))
-                    y = calculate_SE_per_frame(input_image,metrics[i][1][0])
-                    MSE[video].append(y)
-                    bytes_transfer[video].append(metrics[i][0]) # Populate with Size Vals from Metric
-                    i += 1
-                for k, v in MSE.items():
-                    if v:
-                        bytes_per_vid= sum(bytes_transfer[k])
-                        MSE_per_vid = np.mean(v)
-                        #print(type(MSE_per_vid), bytes_per_vid)
-                        output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
-                        f.write(output_line)
-                    
-=======
             # with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
             #     MSE = defaultdict(list)
             #     bytes_transfer = defaultdict(list)
@@ -266,7 +246,6 @@ if __name__ == "__main__":
             #             output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
             #             f.write(output_line)
 
->>>>>>> Stashed changes
     
     
    
