@@ -400,6 +400,7 @@ uncomment the below function driver calls when necessary
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
 print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
 # extract_bytes_from_video(output_dir)
+# extract_bytes_from_video_frames('compressed_video_frames_output_dataset')
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
