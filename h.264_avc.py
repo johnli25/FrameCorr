@@ -6,7 +6,7 @@ import re
 from PIL import Image
 import numpy as np
 from collections import defaultdict
-# import cv2 ffff
+import cv2 
 import random
 
 '''
@@ -25,7 +25,7 @@ def get_number_of_frames(video_file_path):
     return int(output)
 
 
-def compress_videos(input_directory, output_directory, codec='libx264', crf=30, preset='medium'):
+def compress_videos(input_directory, output_directory, codec='libx264', crf=23, preset='medium'):
     """
     (Encoding) Compress all .avi files in the input_directory using H.264 AVC codec with FFmpeg.
     
@@ -237,49 +237,16 @@ def extract_bytes_from_video(output_videos):
     '''
     Extract bytes from the compressed video files and save them in a text file.
     '''
-    output_directory = 'compressed_video_bytes'
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-
     # Open the MP4 video file
     for file in os.listdir(output_videos):
         if os.path.isfile(os.path.join(output_videos, file)) and file.lower().endswith('.mp4'):
             video_path = os.path.join(output_videos, file)
-
-            cap = cv2.VideoCapture(video_path)
-
-            # Check if the video file is opened successfully
-            if not cap.isOpened():
-                print("Error: Could not open the video file.")
-                exit()
-            reader = imageio.get_reader(video_path)
-            total_bytes = 0
-            output_filepath = os.path.join(output_directory, f"{os.path.splitext(file)[0]}.txt")
-            with open(output_filepath, 'wb') as f:
-                frame_number = 0
-                for i, frame in enumerate(reader):
-                    img = Image.fromarray(frame)
-                    encoded_info = img.tobytes()
-
-                    # Get the encoded information of the frame
-                    encoded_info = cv2.imencode('.jpg', frame)[1]
-                    # 'encoded_info' now contains the encoded information of the frame
-                    f.write(encoded_info)
-                    
-                    # Process the frame or save the encoded information as needed
-                    total_bytes += len(encoded_info) # NOTE: encoded_info is a bytes object, so calling len() returns the number of bytes (not the # of elements)!
-                    frame_number += 1 # Increment frame number
-
-            avg_bytes_per_vid = total_bytes / frame_number if frame_number else 0
             # if file in ['diving7.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse11.mp4', 'riding_horse12.mp4', 'running11.mp4', 'running12.mp4', 'running13.mp4', 'skating11.mp4', 'skating12.mp4', 'swing_bench18.mp4', 'swing_bench19.mp4', 'swing_bench20.mp4']:
             if file in ['diving7.mp4', 'diving8.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse8.mp4', 'riding_horse9.mp4', 'running7.mp4', 'running8.mp4', 'running9.mp4', 'skating8.mp4', 'skating9.mp4', 'swing_bench7.mp4', 'swing_bench8.mp4', 'swing_bench9.mp4']:
                 with open(video_path, 'rb') as f:
                     video_bytes = f.read()
                 print(f"Total Bytes = {len(video_bytes)} for {file}.")
-                print(f"{file}: Total bytes of all extracted frames = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
-
-            # Release the video capture object and close the video file
-            cap.release()
+                # print(f"{file}: Total bytes of all extracted frames = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
 
 def extract_bytes_from_video_frames(output_video_frames):
     bytes_dict = defaultdict(list)
@@ -385,7 +352,7 @@ def extract_bytes_from_video_frames(output_video_frames):
 
 original_input_dir = 'video_data'
 # output_dir = 'compressed_videos_output'
-output_dir = 'compressed_videos_output_crf30'
+output_dir = 'compressed_videos_output'
 home_dir = os.getcwd()
 
 start_time = time.time()
@@ -397,7 +364,7 @@ uncomment the below function driver calls when necessary
 compress_videos(original_input_dir, output_dir)
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
 # print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
-# extract_bytes_from_video(output_dir) --> I think this function is wrong and wont be used lol 
+extract_bytes_from_video(output_dir) 
 # extract_bytes_from_video_frames('compressed_video_frames_output_dataset')
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
