@@ -1,3 +1,4 @@
+
 import os
 import subprocess
 import time
@@ -5,7 +6,7 @@ import re
 from PIL import Image
 import numpy as np
 from collections import defaultdict
-import cv2
+import cv2 
 import random
 
 '''
@@ -211,7 +212,7 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
     for key in mse_values:
         mse_values[key] = np.mean(mse_values[key])
 
-    print("mse_values dict length: ", len(mse_values))
+    # print("mse_values dict length: ", len(mse_values))
     print(mse_values['diving_7'])
     print(mse_values['diving_8'])
     print(mse_values['golf_front_7'])
@@ -236,73 +237,121 @@ def extract_bytes_from_video(output_videos):
     '''
     Extract bytes from the compressed video files and save them in a text file.
     '''
-    output_directory = 'compressed_video_bytes_random_drop'
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-
     # Open the MP4 video file
     for file in os.listdir(output_videos):
         if os.path.isfile(os.path.join(output_videos, file)) and file.lower().endswith('.mp4'):
             video_path = os.path.join(output_videos, file)
-
-            cap = cv2.VideoCapture(video_path)
-
-            # Check if the video file is opened successfully
-            if not cap.isOpened():
-                print("Error: Could not open the video file.")
-                exit()
-            total_bytes = 0
-            output_filepath = os.path.join(output_directory, f"{os.path.splitext(file)[0]}.txt")
-            with open(output_filepath, 'wb') as f:
-                frame_number = 0
-                while cap.isOpened():
-                    ret, frame = cap.read()
-
-                    if not ret: break
-
-                    # Get the encoded information of the frame
-                    encoded_info = cv2.imencode('.jpg', frame)[1].tobytes()
-                    # 'encoded_info' now contains the encoded information of the frame
-                    f.write(encoded_info)
-
-                    # NOTE: Drop 10% of the bytes randomly (this might break lol)
-                    # encoded_info = drop_data(encoded_info)
-                    # nparr = np.frombuffer(encoded_info, np.uint8)
-                    # img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-                    # cv2.imshow('image', img)
-                    # cv2.waitKey(0)
-                    # cv2.destroyAllWindows()
-                    
-                    # Process the frame or save the encoded information as needed
-                    total_bytes += len(encoded_info) # NOTE: encoded_info is a bytes object, so calling len() returns the number of bytes (not the # of elements)!
-                    frame_number += 1 # Increment frame number
-
-            avg_bytes_per_vid = total_bytes / frame_number if frame_number else 0
             # if file in ['diving7.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse11.mp4', 'riding_horse12.mp4', 'running11.mp4', 'running12.mp4', 'running13.mp4', 'skating11.mp4', 'skating12.mp4', 'swing_bench18.mp4', 'swing_bench19.mp4', 'swing_bench20.mp4']:
             if file in ['diving7.mp4', 'diving8.mp4', 'golf_front7.mp4', 'golf_front8.mp4', 'kick_front9.mp4', 'kick_front10.mp4', 'lifting5.mp4', 'lifting6.mp4', 'riding_horse8.mp4', 'riding_horse9.mp4', 'running7.mp4', 'running8.mp4', 'running9.mp4', 'skating8.mp4', 'skating9.mp4', 'swing_bench7.mp4', 'swing_bench8.mp4', 'swing_bench9.mp4']:
                 with open(video_path, 'rb') as f:
                     video_bytes = f.read()
-                # print(f"Total Bytes = {len(video_bytes)} for {file}.")
-                print(f"{file}: Total bytes of all extracted frames = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
+                print(f"Total Bytes = {len(video_bytes)} for {file}.")
+                # print(f"{file}: Total bytes of all extracted frames = {total_bytes}, average = {avg_bytes_per_vid} bytes per frame")
 
-            # Release the video capture object and close the video file
-            cap.release()
-
-def drop_data(encoded_info):
-    num_bytes_to_drop_out = int(len(encoded_info) * 0.1)
-    indices_to_drop = random.sample(range(len(encoded_info)), num_bytes_to_drop_out)
-
-    encoded_info_np = np.frombuffer(encoded_info, dtype=np.uint8)
-    encoded_info_np = encoded_info_np.copy()
-
-    for idx in indices_to_drop:
-        encoded_info_np[idx] = 0
+def extract_bytes_from_video_frames(output_video_frames):
+    bytes_dict = defaultdict(list)
+    for file in os.listdir(output_video_frames):
+        if os.path.isfile(os.path.join(output_video_frames, file)) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
+            video_name = file.split('_')[:-1]
+            video_name = '_'.join(video_name)
+            frame_path = os.path.join(output_video_frames, file)
+            with open(frame_path, 'rb') as f:
+                frame_bytes = f.read()
+            bytes_dict[video_name].append(len(frame_bytes))
     
-    encoded_info = encoded_info_np.tobytes()
-    return encoded_info
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['diving_7']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in diving_7: ", len(bytes_dict['diving_7']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['diving_7']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['diving_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in diving_8: ", len(bytes_dict['diving_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['diving_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['golf_front_7']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in golf_front_7: ", len(bytes_dict['golf_front_7']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['golf_front_7']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['golf_front_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in golf_front_8: ", len(bytes_dict['golf_front_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['golf_front_8']), "\n")
+    
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['kick_front_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in kick_front_9: ", len(bytes_dict['kick_front_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['kick_front_9']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['kick_front_10']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in kick_front_10: ", len(bytes_dict['kick_front_10']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['kick_front_10']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['lifting_5']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in lifting_5: ", len(bytes_dict['lifting_5']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['lifting_5']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['lifting_6']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in lifting_6: ", len(bytes_dict['lifting_6']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['lifting_6']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['riding_horse_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in riding_horse_8: ", len(bytes_dict['riding_horse_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['riding_horse_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['riding_horse_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in riding_horse_9: ", len(bytes_dict['riding_horse_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['riding_horse_9']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['running_7']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in running_7: ", len(bytes_dict['running_7']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['running_7']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['running_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in running_8: ", len(bytes_dict['running_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['running_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['running_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in running_9: ", len(bytes_dict['running_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['running_9']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['skating_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in skating_8: ", len(bytes_dict['skating_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['skating_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['skating_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in skating_9: ", len(bytes_dict['skating_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['skating_9']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['swing_bench_7']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in swing_bench_7: ", len(bytes_dict['swing_bench_7']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['swing_bench_7']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['swing_bench_8']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in swing_bench_8: ", len(bytes_dict['swing_bench_8']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['swing_bench_8']), "\n")
+
+    sum_bytes = sum([frame_size for frame_size in bytes_dict['swing_bench_9']])
+    print("total bytes", sum_bytes)
+    print("Number of frames in swing_bench_9: ", len(bytes_dict['swing_bench_9']))
+    print("avg bytes per frame: ", sum_bytes / len(bytes_dict['swing_bench_9']), "\n")
+
 
 original_input_dir = 'video_data'
+# output_dir = 'compressed_videos_output'
 output_dir = 'compressed_videos_output'
 home_dir = os.getcwd()
 
@@ -315,7 +364,8 @@ uncomment the below function driver calls when necessary
 # compress_videos(original_input_dir, output_dir)
 # create_decoded_output_frames(output_dir, 'compressed_video_frames_output_dataset')
 # print("The reconstruction MSE is ", calculate_mse('new_video_frames_dataset', 'compressed_video_frames_output_dataset'))
-extract_bytes_from_video(output_dir)
+extract_bytes_from_video(output_dir) 
+# extract_bytes_from_video_frames('compressed_video_frames_output_dataset')
 print(f"Total time elapsed: {time.time() - start_time:.2f} seconds.")
 
 # NOTE: sanity checks
@@ -330,9 +380,6 @@ print(f'There are {num_files} files in new_video_frames_dataset directory.')
 
 num_files = len([f for f in os.listdir("compressed_video_frames_output_dataset") if os.path.isfile(os.path.join("compressed_video_frames_output_dataset", f))])
 print(f'There are {num_files} files in compressed_video_frames_output_dataset directory.')
-
-num_files = len([f for f in os.listdir("compressed_video_bytes") if os.path.isfile(os.path.join("compressed_video_bytes", f))])
-print(f'There are {num_files} files in compressed_video_bytes directory.')
 
 filename = 'new_video_numidx_labels.txt'  # replace with your file
 with open(filename, 'r') as file:
