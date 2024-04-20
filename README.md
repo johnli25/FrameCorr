@@ -11,7 +11,7 @@
 - if there is an existing qdisc then delete it `tc qdisc del dev ens33 root` and do above command
 - run receiver vm with `python3 PNC_networking.py --mode=1` first and then run sender vm `python3 PNC_networking.py --mode=0`
 
-#### Issue Log
+#### Issues Tracker
 - If you experience Git authentication/missing or invalid credentials issues when trying to git push on the CS 525 cs.illinois.edu VMs, check this thread: https://github.com/microsoft/vscode-remote-release/issues/6997 and try a workaround like `rm -rf ~/.vscode-server`. You may also have to create a copy a GitHub PAT when git pushing again.
 
 
