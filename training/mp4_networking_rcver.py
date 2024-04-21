@@ -39,7 +39,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
     # length_bytes = sock_conn.recv(4)
     # video_length = struct.unpack('!I', length_bytes)[0]
     #sock_conn.send(b'received') 
-    output_folder = "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/received_mp4s_test_john"
+    output_folder = "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/received_mp4_vids"
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     output_filename = next(file_iter)
