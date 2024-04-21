@@ -5,9 +5,9 @@ import struct
 import sys
 import time
 
-host = "172.22.154.247"
+host = "172.22.153.20"
 port = 50013
-video_folder = "/home/deepakn3/Progressive-Neural-Compression/compressed_videos_output"
+video_folder = "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/compressed_videos_output"
 
 def recvall(sock, count):
     buf = b''
@@ -19,24 +19,24 @@ def recvall(sock, count):
         count -= len(newbuf)
     return buf
 
-host = "172.22.154.247"
-port = 50002
+host = "172.22.153.20"
+port = 50013
 MAX_PAYLOAD = 500
 DELIMITER = b'\xFF\x00\xFF' 
-video_folder = "/home/deepakn3/Progressive-Neural-Compression/compressed_videos_output"
+video_folder = "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/compressed_videos_output"
 
 def get_object_size(obj):
     return sys.getsizeof(obj)
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
     s_sock.connect((host, port))
-    for filename in os.listdir(video_folder):
+    for filename in sorted(os.listdir(video_folder)):
        # video_file = os.listdir(video_folder)[0]  # Adjust if you need specific selection
         video_path = os.path.join(video_folder, filename)
         with open(video_path, 'rb') as f:
             video_bytes = f.read()
             num_bytes = get_object_size(video_bytes)
-            print(video_path,len(video_bytes))
+            print(video_path, len(video_bytes))
         
             # num_bytes_packed = struct.pack('!I', num_bytes)  
             # s_sock.sendall(num_bytes_packed)
@@ -46,7 +46,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             for i in range(0, len(video_bytes), chunk_size):
                 chunk = video_bytes[i:i + chunk_size]
                 s_sock.sendall(chunk)
-            s_sock.sendall(b"")
+            s_sock.sendall(DELIMITER)
     s_sock.close()
     print("socket_closed") 
     
