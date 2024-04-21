@@ -8,13 +8,15 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import models
+import random
 import logging
 # import tensorflow_compression as tfc
 class TailDropout:
-    def __init__(self, name, func='uniform', shape=(None, None, None)):
+    def __init__(self, name, input_data = None, func='uniform', shape=(None, None, None)):
         self.func = func
         self.shape = shape
         self.name = name
+        self.input_data = input_data
 
     def dropout_uniform(self):
         X_init = layers.Input(shape=self.shape)
@@ -27,6 +29,20 @@ class TailDropout:
 
         tail_drop = models.Model(X_init, X, name=self.name)
 
+        return tail_drop
+    
+    def dropout_uniform_pnc(self):
+        X_init = layers.Input(shape=self.shape)
+        total_dim = tf.shape(X_init)[-1]
+        tail_len = tf.random.uniform([1, ], minval=0, maxval=total_dim, dtype=tf.int32)
+        head_len = total_dim - tail_len
+        mask1 = tf.concat((tf.ones([tf.shape(X_init)[1], tf.shape(X_init)[2], head_len[0]]),
+                          tf.zeros((tf.shape(X_init)[1], tf.shape(X_init)[2], tail_len[0]))), axis=-1)
+        mask2 = tf.concat((tf.zeros([tf.shape(X_init)[1], tf.shape(X_init)[2], head_len[0]]),
+                          tf.ones((tf.shape(X_init)[1], tf.shape(X_init)[2], tail_len[0]))), axis=-1)
+        # print(X.shape)
+        X = X_init * mask1 + self.input_data * mask2
+        tail_drop = models.Model(X_init, X, name=self.name)
         return tail_drop
 
     def dropout_nonequal_uniform(self):
@@ -54,6 +70,8 @@ class TailDropout:
             return self.dropout_uniform()
         if self.func == 'nonequal':
             return self.dropout_nonequal_uniform()
+        if self.func == "uniform_pnc":
+            return self.dropout_uniform_pnc()
 
 class TailDropout1D:
     def __init__(self, func='uniform', name='TailDrop_Uniform', shape=(None, None)):
