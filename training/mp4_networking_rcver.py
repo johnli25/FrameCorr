@@ -33,12 +33,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
     video_folder = "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/compressed_videos_output"
         
     # Receive video data in chunks and write to file
-    # file_iter = iter(os.listdir(video_folder))
     file_iter = iter(sorted(os.listdir(video_folder)))
     
-    # length_bytes = sock_conn.recv(4)
-    # video_length = struct.unpack('!I', length_bytes)[0]
-    #sock_conn.send(b'received') 
     output_folder = "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/received_mp4_vids"
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -72,39 +68,5 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
     duration = end - start
     print(f"Received {total_bytes_received} bytes")
     print(f"Code execution time: {duration:.6f} seconds") 
-#metrics_input_folder = "/home/deepakn3/Progressive-Neural-Compression/send_vids"
-#create_decoded_output_frames(metrics_input_folder, output_frames_directory):
-    
-# host = "172.22.154.247"
-# port = 50013
-# output_folder = "/home/deepakn3/Progressive-Neural-Compression/send_vids"
-# video_folder = "/home/deepakn3/Progressive-Neural-Compression/compressed_videos_output"
-
-
-# with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
-#     s_sock.bind((host, port))
-#     s_sock.listen()
-#     sock_conn, sock_addr = s_sock.accept()
-#     for filename in os.listdir(video_folder):
-#         while True:  
-#             # Receive the length of the video data
-#             length_bytes = sock_conn.recv(4)
-#             video_length = struct.unpack('!I', length_bytes)[0]
-#             print(video_length)
-#             sock_conn.send(b'received')
-            
-
-#             output_path = os.path.join(output_folder, filename)
-
-#             # Receive the entire video data in one go
-#             with open(output_path, 'ab+') as f:
-#                 #print(video_length)
-#                 video_data = recvall(sock_conn, video_length-30)
-#                 print(type(video_data))
-#                 f.write(video_data)
-
-#             print(f"Received video: {output_path}")
-
-#     sock_conn.close() 
 
     
