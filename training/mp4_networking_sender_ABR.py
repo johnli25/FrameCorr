@@ -7,10 +7,10 @@ port = 50013
 
 # Directories for different bitrates
 def choose_bitrate(throughput):
-    if throughput < 8000000: # low 
+    if throughput < 100000: # low 
         print("low")
         return "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/compressed_videos_output_crf30"
-    elif throughput < 12000000: # default-medium
+    elif throughput < 2500000: # default-medium
         print("medium")
         return "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/compressed_videos_output"
     else: # high
