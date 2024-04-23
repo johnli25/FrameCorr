@@ -17,6 +17,7 @@ input_folder = "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/compresse
 
 def measure_throughput(start_time, data_received):
     end_time = time.time()
+    print(end_time - start_time)
     throughput = data_received / (end_time - start_time)  # bits per second
     return int(throughput)
 
