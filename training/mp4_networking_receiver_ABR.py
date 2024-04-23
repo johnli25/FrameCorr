@@ -66,6 +66,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
         
         # Inform sender of the next video file and desired bitrate
         conn.send(f"{video_file},{bitrate}".encode())
+        
     total_end_time = time.time()
     total_time_elapsed = total_end_time - start_time
     print(f"Total time elapsed: {total_time_elapsed} seconds")
