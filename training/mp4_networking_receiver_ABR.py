@@ -17,21 +17,23 @@ input_folder = "/home/johnwl2/FrameCorr/Progressive-Neural-Compression/compresse
 
 def measure_throughput(start_time, data_received):
     end_time = time.time()
-    throughput = data_received * 8 / (end_time - start_time)  # bits per second
-    return throughput
+    throughput = data_received / (end_time - start_time)  # bits per second
+    return int(throughput)
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
     s_sock.bind((host, port))
     s_sock.listen()
     conn, addr = s_sock.accept()
+    total_start_time = time.time()
     video_files = sorted(os.listdir(input_folder))  # Dynamically get the list of video files
-    for video_file in video_files:
-        video_path = os.path.join(output_folder, video_file)
+    for i in range(len(video_files)):
+        video_file = video_files[i]
+        output_path = os.path.join(output_folder, video_file)
         start_time = time.time()
-        total_data_received = 0
+        received_bytes = 0
         buffer = b''
-        # with open(video_path, 'ab+') as f:
-        #     print(video_path)                
+        # with open(output_path, 'ab+') as f:
+        #     print(output_path)                
         #     while True:
         #         chunk = conn.recv(4096)
         #         if DELIMITER in chunk:
@@ -41,8 +43,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
         #             break
         #         f.write(chunk)
         #         total_data_received += len(chunk)
-        with open(video_path, 'ab+') as f:
-            print(video_path)
+        with open(output_path, 'ab+') as f:
+            print(output_path)
             received_bytes = 0
             while buffer.find(DELIMITER) == -1:
                 chunk = conn.recv(4096) 
@@ -55,20 +57,17 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             f.write(mp4_bytes)
 
         # Determine appropriate bitrate based on throughput
-        throughput = measure_throughput(start_time, total_data_received)
-        print("throughput", throughput)
-        if throughput < 1e6:  # less than 1 Mbps
-            bitrate = 'low'
-        elif throughput < 5e6:  # less than 5 Mbps
-            bitrate = 'medium'
-        else:
-            bitrate = 'high'
+        throughput = measure_throughput(start_time, received_bytes)
+        print("throughput", str(throughput))
         
         # Inform sender of the next video file and desired bitrate
-        conn.send(f"{video_file},{bitrate}".encode())
-        
+        if i + 1 < len(video_files):  # If there is a next video file
+            next_video_file = video_files[i + 1]
+            conn.send(f"{next_video_file},{throughput}".encode())
+        else:  # If this is the last video file
+            conn.send(b"END")
+
     total_end_time = time.time()
-    total_time_elapsed = total_end_time - start_time
+    total_time_elapsed = total_end_time - total_start_time
     print(f"Total time elapsed: {total_time_elapsed} seconds")
-    conn.send(b"END")
     conn.close()
