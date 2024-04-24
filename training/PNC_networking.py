@@ -169,29 +169,58 @@ if __name__ == "__main__":
     def diff_between_tf(x,y):
         return x - y[:,None]
     
+    def partition_frame(frame,start,end):
+        return frame[:,:,:,start:end]
+    
+    def zero_padding(frame,target_shape):
+        pad_needed = target_shape[-1] - frame.shape[-1]
+        padding = ((0, 0), (0, 0), (0, 0), (0, padding_needed)) 
+        padded_frame = np.pad(frame, padding, mode='constant', constant_values=0)
+        return padded_frame 
+    
+    def optimize_frame_end(throughput):
+        frame_end = 0
+        if throughput <= 900000:
+            frame_end = 5
+        elif 900000 <= throughput <= 4500000:
+            frame_end = 7
+        else:
+            frame_end = 10
+        return frame_end
+    
+    def measure_throughput(start_time, data_received):
+        end_time = time.time()
+        print(end_time - start_time)
+        throughput = data_received / (end_time - start_time)  # bits per second
+        return int(throughput)
+    
+    def send_int(sock, value):
+        packed_data = struct.pack('!i', value)  # '!' for network byte order (big-endian), 'i' for integer
+        sock.sendall(packed_data)
     
     packet_length = 40963#1283#43 ##40963
     encoder, decoder = get_encoder_decoder(model)  
     if args.mode == 0:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             s_sock.connect((host, port))
+            frame_end = 10
             for file, input_image, output_image in ae_test_dataset:
                 #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
                 encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
+                #frame_end = optimize_frame_end(throughput)
+                encoded_data = partition_frame(encoded_data,0,frame_end)
                 image_bytes = encoded_data.tobytes()
                 image_bytes = image_bytes + DELIMITER
                 num_bytes = get_object_size(image_bytes)
-                # print(len(image_bytes))
                 video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-                print(str(video))
-                # num_byte = struct.pack('!I', num_bytes)
-                # s_sock.send(num_byte)
-                # conf = s_sock.recv(20)
+                print(str(video),num_bytes)
+                # LOOP THROUGH FEATURES
                 s_sock.sendall(image_bytes)
+                recv_data = recvall(s_sock,packet_length)
+                frame_end = struct.unpack('!i', recv_data)
             s_sock.close()
             print("socket_closed")        
     elif args.mode == 1:
-        fx = open('bytes_sent2', 'a') 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             s_sock.bind((host, port))
             s_sock.listen()
@@ -200,51 +229,59 @@ if __name__ == "__main__":
             metrics = defaultdict(list)
             with sock_conn:
                 while True:
+                    start_time = time.time()
                     # byte_data = s_sock.recv(4)
                     # s_sock.send(b'received')
                     # num_bytes = struct.unpack('!i', byte_data)[0]
                     buffer = recvall(sock_conn,packet_length)
                     if not buffer:
                         break
+                    ###
+                    # CALCULATE NORMALIZED THROUGH
+                    buf_size = get_object_size(buffer)
+                    throughput = measure_throughput(start_time,buf_size)
+                    next_frame_end = optimize_frame_end(throughput)
+                    send_int(s_sock,next_frame_end)
+                    ###
+
                     image_bytes, _, buffer = buffer.partition(DELIMITER)
                     image_array= np.frombuffer(image_bytes, dtype=np.float32)
                     print(image_array)
-                    image_array = image_array.reshape(1,32,32,10)
+                    image_array = image_array.reshape(1,32,32,frame_end)
+                    frame_end = next_frame_end
                     #np.save('my_data.npy', image_array)
-                    np.savetxt(fx, image_array.flatten(), fmt='%4.6f', delimiter=' ')
-                    # image_array = image_array.reshape(1, 32, 32, 10)
-                    # decoded_data = decoder.predict(image_array)
-                    
-                    # metrics[iter].append(get_object_size(image_bytes))
-                    # metrics[iter].append(decoded_data)
-                    # print(iter)
+                    #np.savetxt(fx, image_array.flatten(), fmt='%4.6f', delimiter=' ')
+                    #image_array = image_array.reshape(1, 32, 32, 10)
+                    decoded_data = decoder.predict(image_array)
+                    metrics[iter].append(get_object_size(image_bytes))
+                    metrics[iter].append(decoded_data)
+                    print(iter)
                     iter += 1
                     buffer = b''
                 s_sock.close()
             i = 0
             
-            # with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
-            #     MSE = defaultdict(list)
-            #     bytes_transfer = defaultdict(list)
-            #     for file, input_image, output_image in ae_test_dataset:
-            #         video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-            #         print(str(video))
-            #         y = tf.reduce_sum(tf.math.square(input_image - metrics[i][1]), axis=None)
-            #         encoded_d = encoder.predict(tf.expand_dims(input_image, axis=0))
-            #         decoded_d = decoder.predict(encoded_d)
-            #         print(diff_between_tf(decoded_d,metrics[i][1]))
-            #         output_line = 
-            #         f.write(output_line)
-            #         MSE[video].append(y)
-            #         bytes_transfer[video].append(metrics[i][0]) # Populate with Size Vals from Metric
-            #         i += 1
-            #     for k, v in MSE.items():
-            #         if v:
-            #             bytes_per_vid= sum(bytes_transfer[k])
-            #             MSE_per_vid = np.mean(v)
-            #             #print(type(MSE_per_vid), bytes_per_vid)
-            #             output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
-            #             f.write(output_line)
+            with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
+                MSE = defaultdict(list)
+                bytes_transfer = defaultdict(list)
+                for file, input_image, output_image in ae_test_dataset:
+                    video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
+                    print(str(video))
+                    y = tf.reduce_sum(tf.math.square(input_image - metrics[i][1]), axis=None)
+                    # encoded_d = encoder.predict(tf.expand_dims(input_image, axis=0))
+                    # decoded_d = decoder.predict(encoded_d)
+                    # print(diff_between_tf(decoded_d,metrics[i][1]))
+                    # f.write(output_line)
+                    MSE[video].append(y)
+                    bytes_transfer[video].append(metrics[i][0]) # Populate with Size Vals from Metric
+                    i += 1
+                for k, v in MSE.items():
+                    if v:
+                        bytes_per_vid= sum(bytes_transfer[k])
+                        MSE_per_vid = np.mean(v)
+                        #print(type(MSE_per_vid), bytes_per_vid)
+                        output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
+                        f.write(output_line)
 
     
     

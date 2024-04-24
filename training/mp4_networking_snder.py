@@ -31,16 +31,11 @@ def get_object_size(obj):
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
     s_sock.connect((host, port))
     for filename in sorted(os.listdir(video_folder)):
-       # video_file = os.listdir(video_folder)[0]  # Adjust if you need specific selection
         video_path = os.path.join(video_folder, filename)
         with open(video_path, 'rb') as f:
             video_bytes = f.read()
             num_bytes = get_object_size(video_bytes)
             print(video_path, len(video_bytes))
-        
-            # num_bytes_packed = struct.pack('!I', num_bytes)  
-            # s_sock.sendall(num_bytes_packed)
-            #s_sock.recv(20)  
 
             chunk_size = 4096  # Adjust if needed 
             for i in range(0, len(video_bytes), chunk_size):
@@ -49,28 +44,3 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             s_sock.sendall(DELIMITER)
     s_sock.close()
     print("socket_closed") 
-    
-    
-# with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
-#     s_sock.connect((host, port))
-
-#     for filename in os.listdir(video_folder):
-#         video_path = os.path.join(video_folder, filename)
-
-#         with open(video_path, 'rb') as f:
-#             video_bytes = f.read()
-#             num_bytes = len(video_bytes)
-#             print(video_path, num_bytes) 
-
-#             num_bytes_packed = struct.pack('!I', num_bytes)  
-#             s_sock.send(num_bytes_packed) 
-            
-#             confirmation_bytes = s_sock.recv(8)
-#             confirm_format= confirmation_bytes.decode('utf-8')
-#             print(confirm_format)
-#             if confirm_format == b'received':
-#                 s_sock.sendall(video_bytes)
-
-#     s_sock.close()
-#     print("socket_closed") 
-
