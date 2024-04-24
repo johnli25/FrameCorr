@@ -12,7 +12,7 @@ import random
 import logging
 # import tensorflow_compression as tfc
 class TailDropout:
-    def __init__(self, name, input_data = None, func='uniform', shape=(None, None, None)):
+    def __init__(self, name = 'x', input_data = None, func='uniform', shape=(None, None, None)):
         self.func = func
         self.shape = shape
         self.name = name
