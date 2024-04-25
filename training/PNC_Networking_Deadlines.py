@@ -218,12 +218,13 @@ if __name__ == "__main__":
                 start_time_deadline = time.time()
                 for i in range(frame_end):
                     feature_bytes = partition_frame(encoded_data,i,i+1)
-                    feature_bytes = feature_bytes.tobytes()
+                    feature_bytes_combined += feature_bytes.tobytes()
                     print(str(video),i)
                     end_time_deadline = time.time()
                     if end_time_deadline-start_time_deadline >= deadlines[0]:
-                        s_sock.sendall(DELIMITER)
-                s_sock.sendall(image_bytes)
+                        feature_bytes_combined = feature_bytes_combined + DELIMITER
+                        break
+                s_sock.sendall(feature_bytes_combined)
                 
                 # recv_data = s_sock.recv(4)
                 # print(recv_data)
@@ -251,9 +252,8 @@ if __name__ == "__main__":
                         buffer += recvall(sock_conn,pk_len)
                     ###
                     buffer_size = get_object_size(buffer)
-                    frame_end = (buffer_size - 3) / (1 * 32 * 32 * 4)
                     # CALCULATE NORMALIZED THROUGH
-                    buf_size = get_object_size(buffer)
+                    
                     # throughput = measure_throughput(start_time,buf_size)
                     # next_frame_end = optimize_frame_end(throughput)
                     # print("frame_end",next_frame_end)
