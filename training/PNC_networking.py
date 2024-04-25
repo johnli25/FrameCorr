@@ -173,15 +173,15 @@ if __name__ == "__main__":
     
     def zero_padding(frame,target_shape):
         pad_needed = target_shape[-1] - frame.shape[-1]
-        padding = ((0, 0), (0, 0), (0, 0), (0, padding_needed)) 
+        padding = ((0, 0), (0, 0), (0, 0), (0, pad_needed)) 
         padded_frame = np.pad(frame, padding, mode='constant', constant_values=0)
         return padded_frame 
     
     def optimize_frame_end(throughput):
         frame_end = 0
-        if throughput <= 900000:
+        if throughput <= 500000:
             frame_end = 5
-        elif 900000 <= throughput <= 4500000:
+        elif 500000 <= throughput <= 1000000:
             frame_end = 7
         else:
             frame_end = 10
@@ -189,15 +189,13 @@ if __name__ == "__main__":
     
     def measure_throughput(start_time, data_received):
         end_time = time.time()
-        print(end_time - start_time)
+        #print("time:",end_time - start_time)
         throughput = data_received / (end_time - start_time)  # bits per second
         return int(throughput)
     
-    def send_int(sock, value):
-        packed_data = struct.pack('!i', value)  # '!' for network byte order (big-endian), 'i' for integer
-        sock.sendall(packed_data)
-    
-    packet_length = 40963#1283#43 ##40963
+
+
+    packet_length = 40963
     encoder, decoder = get_encoder_decoder(model)  
     if args.mode == 0:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
@@ -228,9 +226,11 @@ if __name__ == "__main__":
             sock_conn, sock_addr = s_sock.accept()
             iter = 0
             metrics = defaultdict(list)
+            frame_end = 10
             with sock_conn:
                 while True:
                     start_time = time.time()
+                    packet_length = (1 * 32 * 32 * frame_end * 4) + 3
                     # byte_data = s_sock.recv(4)
                     # s_sock.send(b'received')
                     # num_bytes = struct.unpack('!i', byte_data)[0]
@@ -242,19 +242,24 @@ if __name__ == "__main__":
                     buf_size = get_object_size(buffer)
                     throughput = measure_throughput(start_time,buf_size)
                     next_frame_end = optimize_frame_end(throughput)
-                    send_int(s_sock,next_frame_end)
+                    print("frame_end",next_frame_end)
+                    packed_data = struct.pack('!i', next_frame_end)  # '!' for network byte order (big-endian), 'i' for integer
+                    sock_conn.send(packed_data)
+    
+                    #send_int(s_sock,next_frame_end)
                     ###
 
                     image_bytes, _, buffer = buffer.partition(DELIMITER)
                     image_array= np.frombuffer(image_bytes, dtype=np.float32)
                     print(image_array)
                     image_array = image_array.reshape(1,32,32,frame_end)
+                    image_array_zp = zero_padding(image_array,(1,32,32,10))
                     frame_end = next_frame_end
                     #np.save('my_data.npy', image_array)
                     #np.savetxt(fx, image_array.flatten(), fmt='%4.6f', delimiter=' ')
                     #image_array = image_array.reshape(1, 32, 32, 10)
-                    decoded_data = decoder.predict(image_array)
-                    metrics[iter].append(get_object_size(image_bytes))
+                    decoded_data = decoder.predict(image_array_zp)
+                    metrics[iter].append(get_object_size(image_array_zp))
                     metrics[iter].append(decoded_data)
                     print(iter)
                     iter += 1
