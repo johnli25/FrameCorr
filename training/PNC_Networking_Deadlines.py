@@ -207,32 +207,19 @@ if __name__ == "__main__":
                 packet_length = (1 * 32 * 32 * feature_end * 4) + 3
                 print(encoded_data.shape, feature_end)
                 encoded_data = partition_frame(encoded_data, 0, feature_end)
-                image_bytes = encoded_data.tobytes()
-                image_bytes = image_bytes + DELIMITER
-                num_bytes = get_object_size(image_bytes)
                 video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
-                print("num_bytes of", str(video_img_frame), num_bytes)
-                # LOOP THROUGH FEATURES
+                print("num_bytes of ", str(video_img_frame), get_object_size(encoded_data.tobytes())) # should I include .tobytes()?
                 start_time_deadline = time.time()
                 feature_bytes_combined = b''
-                for i in range(feature_end):
+                for i in range(feature_end): # LOOP THROUGH FEATURES
                     feature_bytes = partition_frame(encoded_data,i,i+1)
                     feature_bytes_combined += feature_bytes.tobytes()
                     print(str(video_img_frame), i)
-                    # if i == 9:
-                    #     feature_bytes_combined = feature_bytes_combined + DELIMITER
-                    #     print(get_object_size(feature_bytes_combined))
-                    #     print(feature_bytes_combined[-50:-1])
-                    #     break
                     if time.time() - start_time_deadline >= deadlines[0]:
-                        feature_bytes_combined = feature_bytes_combined + DELIMITER
                         break
                 
-                s_sock.sendall(feature_bytes_combined)
-                
-                # recv_data = s_sock.recv(4)
-                # print(recv_data)
-                # frame_end = struct.unpack('!i', recv_data)[0]
+                s_sock.sendall(feature_bytes_combined + DELIMITER)
+
             s_sock.close()
             print("socket_closed")        
     elif args.mode == 1:

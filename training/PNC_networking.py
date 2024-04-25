@@ -241,6 +241,7 @@ if __name__ == "__main__":
                     buf_size = get_object_size(buffer)
                     throughput = measure_throughput(start_time,buf_size)
                     next_frame_end = optimize_frame_end(throughput)
+                    print("throughput", throughput)
                     print("frame_end",next_frame_end)
                     packed_data = struct.pack('!i', next_frame_end)  # '!' for network byte order (big-endian), 'i' for integer
                     sock_conn.send(packed_data)
@@ -271,7 +272,7 @@ if __name__ == "__main__":
                 bytes_transfer = defaultdict(list)
                 for file, input_image, output_image in ae_test_dataset:
                     video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-                    print(str(video))
+                    # print(str(video))
                     y = tf.reduce_sum(tf.math.square(input_image - metrics[i][1]), axis=None)
                     # encoded_d = encoder.predict(tf.expand_dims(input_image, axis=0))
                     # decoded_d = decoder.predict(encoded_d)
