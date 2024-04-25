@@ -216,6 +216,7 @@ if __name__ == "__main__":
                 print(str(video),num_bytes)
                 # LOOP THROUGH FEATURES
                 start_time_deadline = time.time()
+                feature_bytes_combined = b''
                 for i in range(frame_end):
                     
                     feature_bytes = partition_frame(encoded_data,i,i+1)
@@ -224,11 +225,13 @@ if __name__ == "__main__":
                     end_time_deadline = time.time()
                     if i == 9:
                         feature_bytes_combined = feature_bytes_combined + DELIMITER
+                        print(get_object_size(feature_bytes_combined))
+                        print(feature_bytes_combined[-50:-1])
                         break
                     if end_time_deadline-start_time_deadline >= deadlines[0]:
                         feature_bytes_combined = feature_bytes_combined + DELIMITER
                         break
-                    
+                
                 s_sock.sendall(feature_bytes_combined)
                 
                 # recv_data = s_sock.recv(4)
