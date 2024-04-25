@@ -285,7 +285,7 @@ if __name__ == "__main__":
                         for file, input_image, output_image in ae_test_dataset:
                             video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
                             # print(str(video))
-                            y = tf.reduce_sum(tf.math.square(input_image - metrics[i][1]), axis=None)
+                            y = tf.reduce_sum(tf.math.square(input_image - metrics[video_img_frame][1]), axis=None)
                             # encoded_d = encoder.predict(tf.expand_dims(input_image, axis=0))
                             # decoded_d = decoder.predict(encoded_d)
                             # print(diff_between_tf(decoded_d,metrics[i][1]))
