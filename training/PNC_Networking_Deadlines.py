@@ -1,3 +1,4 @@
+
 import argparse
 from pathlib import Path
 import logging
@@ -123,9 +124,11 @@ if __name__ == "__main__":
                         break 
                     
     host = "172.22.154.247"
-    port = 50002
+    port = 50001
+    port = 50001
     MAX_PAYLOAD = 500
-    DELIMITER = b'\xFF\x00\xFF' 
+    DELIMITER = b'\xFF\x00\xFF'
+    DEADLINE_PASSED = b'\xF0\xF0\xF0\xFF' 
 
     def chunk_data(data, chunk_size):
         """Chunks data into smaller pieces."""
@@ -196,29 +199,44 @@ if __name__ == "__main__":
     def send_int(sock, value):
         packed_data = struct.pack('!i', value)  # '!' for network byte order (big-endian), 'i' for integer
         sock.sendall(packed_data)
-    
+    deadlines = [200]
     packet_length = 40963#1283#43 ##40963
     encoder, decoder = get_encoder_decoder(model)  
     if args.mode == 0:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             s_sock.connect((host, port))
             frame_end = 10
+            
             for file, input_image, output_image in ae_test_dataset:
-                packet_length = (1 * 32 * 32 * frame_end * 4) + 3
+                start_time_deadlines = time.time()
+                
                 #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
-                encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
-                print(encoded_data.shape,frame_end)
+                encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
+                #frame_end = optimize_frame_end(throughput)
                 encoded_data = partition_frame(encoded_data,0,frame_end)
                 image_bytes = encoded_data.tobytes()
                 image_bytes = image_bytes + DELIMITER
                 num_bytes = get_object_size(image_bytes)
                 video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
                 print(str(video),num_bytes)
+                for i in range(frame_end):
+                    feature_bytes = partition_frame(encoded_data,i,i+1)
+                    feature_bytes = feature_bytes.tobytes()
+                    print(str(video),k,i)
+                    
                 # LOOP THROUGH FEATURES
-                s_sock.sendall(image_bytes)
-                recv_data = s_sock.recv(4)
-                print(recv_data)
-                frame_end = struct.unpack('!i', recv_data)[0]
+                # MEASURE TIME COMPARE WITH DEADLINE
+                #   
+                    s_sock.sendall(feature)
+                    end_time = time.time()
+                    if end_time-start_time >= deadlines[0]:
+                        s_sock.sendall(DEADLINE_PASSED)
+                        break
+                    #ack = s_sock.recv(4)
+                    #if ack == b"":
+                        
+                recv_data = recvall(s_sock,packet_length)
+                frame_end = struct.unpack('!i', recv_data)
             s_sock.close()
             print("socket_closed")        
     elif args.mode == 1:
