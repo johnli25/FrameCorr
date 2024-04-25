@@ -204,7 +204,7 @@ if __name__ == "__main__":
                 #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
                 encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
                 feature_end = encoded_data.shape[-1]
-                packet_length = (1 * 32 * 32 * feature_end * 4) + 3
+                # packet_length = (1 * 32 * 32 * feature_end * 4) + 3
                 print(encoded_data.shape, feature_end)
                 encoded_data = partition_frame(encoded_data, 0, feature_end)
                 video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
@@ -215,7 +215,9 @@ if __name__ == "__main__":
                     feature_bytes = partition_frame(encoded_data,i,i+1)
                     feature_bytes_combined += feature_bytes.tobytes()
                     print(str(video_img_frame), i)
-                    if time.time() - start_time_deadline >= deadlines[0]:
+                    delta_timeline = time.time() - start_time_deadline
+                    print("current time elapsed", delta_timeline)
+                    if delta_timeline >= deadlines[0]:
                         break
                 
                 s_sock.sendall(feature_bytes_combined + DELIMITER)
@@ -262,7 +264,9 @@ if __name__ == "__main__":
                         
                     image_bytes, _, buffer = buffer.partition(DELIMITER)
                     image_bytes_size = get_object_size(image_bytes)
+                    print("image_bytes_size", image_bytes_size)
                     frame_end = (image_bytes_size - 3) / (1 * 32 * 32 * 4)
+                    print("frame_end", frame_end)
                     image_array = np.frombuffer(image_bytes, dtype=np.float32)
                     print(image_array)
                     image_array = image_array.reshape(1,32,32,frame_end)
