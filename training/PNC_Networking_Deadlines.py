@@ -1,4 +1,3 @@
-
 import argparse
 from pathlib import Path
 import logging
@@ -124,11 +123,9 @@ if __name__ == "__main__":
                         break 
                     
     host = "172.22.154.247"
-    port = 50001
-    port = 50001
+    port = 50002
     MAX_PAYLOAD = 500
-    DELIMITER = b'\xFF\x00\xFF'
-    DEADLINE_PASSED = b'\xF0\xF0\xF0\xFF' 
+    DELIMITER = b'\xFF\x00\xFF' 
 
     def chunk_data(data, chunk_size):
         """Chunks data into smaller pieces."""
@@ -176,15 +173,15 @@ if __name__ == "__main__":
     
     def zero_padding(frame,target_shape):
         pad_needed = target_shape[-1] - frame.shape[-1]
-        padding = ((0, 0), (0, 0), (0, 0), (0, padding_needed)) 
+        padding = ((0, 0), (0, 0), (0, 0), (0, pad_needed)) 
         padded_frame = np.pad(frame, padding, mode='constant', constant_values=0)
         return padded_frame 
     
     def optimize_frame_end(throughput):
         frame_end = 0
-        if throughput <= 900000:
+        if throughput <= 500000:
             frame_end = 5
-        elif 900000 <= throughput <= 4500000:
+        elif 500000 <= throughput <= 1000000:
             frame_end = 7
         else:
             frame_end = 10
@@ -192,51 +189,45 @@ if __name__ == "__main__":
     
     def measure_throughput(start_time, data_received):
         end_time = time.time()
-        print(end_time - start_time)
+        #print("time:",end_time - start_time)
         throughput = data_received / (end_time - start_time)  # bits per second
+        print(throughput)
         return int(throughput)
     
-    def send_int(sock, value):
-        packed_data = struct.pack('!i', value)  # '!' for network byte order (big-endian), 'i' for integer
-        sock.sendall(packed_data)
-    deadlines = [200]
-    packet_length = 40963#1283#43 ##40963
-    encoder, decoder = get_encoder_decoder(model)  
+
+
+    packet_length = 40963
+    encoder, decoder = get_encoder_decoder(model) 
+    deadlines = [200] 
     if args.mode == 0:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             s_sock.connect((host, port))
             frame_end = 10
-            
             for file, input_image, output_image in ae_test_dataset:
-                start_time_deadlines = time.time()
-                
+                packet_length = (1 * 32 * 32 * frame_end * 4) + 3
                 #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
-                encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
-                #frame_end = optimize_frame_end(throughput)
+                encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
+                print(encoded_data.shape,frame_end)
                 encoded_data = partition_frame(encoded_data,0,frame_end)
                 image_bytes = encoded_data.tobytes()
                 image_bytes = image_bytes + DELIMITER
                 num_bytes = get_object_size(image_bytes)
                 video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
                 print(str(video),num_bytes)
+                # LOOP THROUGH FEATURES
+                start_time_deadline = time.time()
                 for i in range(frame_end):
                     feature_bytes = partition_frame(encoded_data,i,i+1)
                     feature_bytes = feature_bytes.tobytes()
-                    print(str(video),k,i)
-                    
-                # LOOP THROUGH FEATURES
-                # MEASURE TIME COMPARE WITH DEADLINE
-                #   
-                    s_sock.sendall(feature)
-                    end_time = time.time()
-                    if end_time-start_time >= deadlines[0]:
-                        s_sock.sendall(DEADLINE_PASSED)
-                        break
-                    #ack = s_sock.recv(4)
-                    #if ack == b"":
-                        
-                recv_data = recvall(s_sock,packet_length)
-                frame_end = struct.unpack('!i', recv_data)
+                    print(str(video),i)
+                    end_time_deadline = time.time()
+                    if end_time_deadline-start_time_deadline >= deadlines[0]:
+                        s_sock.sendall(DELIMITER)
+                s_sock.sendall(image_bytes)
+                
+                # recv_data = s_sock.recv(4)
+                # print(recv_data)
+                # frame_end = struct.unpack('!i', recv_data)[0]
             s_sock.close()
             print("socket_closed")        
     elif args.mode == 1:
@@ -246,37 +237,47 @@ if __name__ == "__main__":
             sock_conn, sock_addr = s_sock.accept()
             iter = 0
             metrics = defaultdict(list)
+            frame_end = 10
+            buffer = b''
             with sock_conn:
                 while True:
                     start_time = time.time()
+                    packet_length = (1 * 32 * 32 * frame_end * 4) + 3
+                    pk_len = (1 * 32 * 32 * 4) + 3
                     # byte_data = s_sock.recv(4)
                     # s_sock.send(b'received')
                     # num_bytes = struct.unpack('!i', byte_data)[0]
-                    buffer = recvall(sock_conn,packet_length)
-                    if not buffer:
-                        break
+                    while DELIMITER not in buffer:
+                        buffer += recvall(sock_conn,pk_len)
                     ###
+                    buffer_size = get_object_size(buffer)
+                    frame_end = (buffer_size - 3) / (1 * 32 * 32 * 4)
                     # CALCULATE NORMALIZED THROUGH
                     buf_size = get_object_size(buffer)
-                    throughput = measure_throughput(start_time,buf_size)
-                    next_frame_end = optimize_frame_end(throughput)
-                    send_int(s_sock,next_frame_end)
+                    # throughput = measure_throughput(start_time,buf_size)
+                    # next_frame_end = optimize_frame_end(throughput)
+                    # print("frame_end",next_frame_end)
+                    # packed_data = struct.pack('!i', next_frame_end)  # '!' for network byte order (big-endian), 'i' for integer
+                    # sock_conn.send(packed_data)
+    
+                    #send_int(s_sock,next_frame_end)
                     ###
 
                     image_bytes, _, buffer = buffer.partition(DELIMITER)
+                    image_bytes_size = get_object_size(image_bytes)
+                    frame_end = (image_bytes_size - 3) / (1 * 32 * 32 * 4)
                     image_array= np.frombuffer(image_bytes, dtype=np.float32)
                     print(image_array)
                     image_array = image_array.reshape(1,32,32,frame_end)
-                    frame_end = next_frame_end
+                    image_array_zp = zero_padding(image_array,(1,32,32,10))
                     #np.save('my_data.npy', image_array)
                     #np.savetxt(fx, image_array.flatten(), fmt='%4.6f', delimiter=' ')
                     #image_array = image_array.reshape(1, 32, 32, 10)
-                    decoded_data = decoder.predict(image_array)
-                    metrics[iter].append(get_object_size(image_bytes))
+                    decoded_data = decoder.predict(image_array_zp)
+                    metrics[iter].append(get_object_size(image_array_zp))
                     metrics[iter].append(decoded_data)
                     print(iter)
                     iter += 1
-                    buffer = b''
                 s_sock.close()
             i = 0
             
