@@ -217,13 +217,18 @@ if __name__ == "__main__":
                 # LOOP THROUGH FEATURES
                 start_time_deadline = time.time()
                 for i in range(frame_end):
+                    
                     feature_bytes = partition_frame(encoded_data,i,i+1)
                     feature_bytes_combined += feature_bytes.tobytes()
                     print(str(video),i)
                     end_time_deadline = time.time()
+                    if i == 9:
+                        feature_bytes_combined = feature_bytes_combined + DELIMITER
+                        break
                     if end_time_deadline-start_time_deadline >= deadlines[0]:
                         feature_bytes_combined = feature_bytes_combined + DELIMITER
                         break
+                    
                 s_sock.sendall(feature_bytes_combined)
                 
                 # recv_data = s_sock.recv(4)
@@ -244,10 +249,11 @@ if __name__ == "__main__":
                 while True:
                     start_time = time.time()
                     packet_length = (1 * 32 * 32 * frame_end * 4) + 3
-                    pk_len = (1 * 32 * 32 * 4) + 3
+                    pk_len = (1 * 32 * 32 * 4) 
                     # byte_data = s_sock.recv(4)
                     # s_sock.send(b'received')
                     # num_bytes = struct.unpack('!i', byte_data)[0]
+                    buffer += recvall(sock_conn,3)
                     while DELIMITER not in buffer:
                         buffer += recvall(sock_conn,pk_len)
                     ###
