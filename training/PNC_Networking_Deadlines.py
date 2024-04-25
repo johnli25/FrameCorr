@@ -176,7 +176,7 @@ if __name__ == "__main__":
     
     def zero_padding(frame,target_shape):
         pad_needed = target_shape[-1] - frame.shape[-1]
-        padding = ((0, 0), (0, 0), (0, 0), (0, padding_needed)) 
+        padding = ((0, 0), (0, 0), (0, 0), (0, pad_needed)) 
         padded_frame = np.pad(frame, padding, mode='constant', constant_values=0)
         return padded_frame 
     
