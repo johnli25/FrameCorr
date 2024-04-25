@@ -122,8 +122,8 @@ if __name__ == "__main__":
                     if not recv_data:
                         break 
                     
-    host = "172.22.154.247"
-    port = 50002
+    host = "172.22.153.20"
+    port = 50013
     MAX_PAYLOAD = 500
     DELIMITER = b'\xFF\x00\xFF' 
 
@@ -196,47 +196,31 @@ if __name__ == "__main__":
     
 
 
-    packet_length = 40963
     encoder, decoder = get_encoder_decoder(model) 
     deadlines = [200] 
     if args.mode == 0:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             s_sock.connect((host, port))
-            frame_end = 10
             for file, input_image, output_image in ae_test_dataset:
-                packet_length = (1 * 32 * 32 * frame_end * 4) + 3
                 #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
                 encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
-                print(encoded_data.shape,frame_end)
-                encoded_data = partition_frame(encoded_data,0,frame_end)
-                image_bytes = encoded_data.tobytes()
-                image_bytes = image_bytes + DELIMITER
-                num_bytes = get_object_size(image_bytes)
-                video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-                print(str(video),num_bytes)
-                # LOOP THROUGH FEATURES
+                feature_end = encoded_data.shape[-1]
+                packet_length = (1 * 32 * 32 * feature_end * 4) + 3
+                print(encoded_data.shape, feature_end)
+                encoded_data = partition_frame(encoded_data, 0, feature_end)
+                video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
+                print("num_bytes of ", str(video_img_frame), get_object_size(encoded_data.tobytes())) # should I include .tobytes()?
                 start_time_deadline = time.time()
                 feature_bytes_combined = b''
-                for i in range(frame_end):
-                    
+                for i in range(feature_end): # LOOP THROUGH FEATURES
                     feature_bytes = partition_frame(encoded_data,i,i+1)
                     feature_bytes_combined += feature_bytes.tobytes()
-                    print(str(video),i)
-                    end_time_deadline = time.time()
-                    if i == 9:
-                        feature_bytes_combined = feature_bytes_combined + DELIMITER
-                        print(get_object_size(feature_bytes_combined))
-                        print(feature_bytes_combined[-50:-1])
-                        break
-                    if end_time_deadline-start_time_deadline >= deadlines[0]:
-                        feature_bytes_combined = feature_bytes_combined + DELIMITER
+                    print(str(video_img_frame), i)
+                    if time.time() - start_time_deadline >= deadlines[0]:
                         break
                 
-                s_sock.sendall(feature_bytes_combined)
-                
-                # recv_data = s_sock.recv(4)
-                # print(recv_data)
-                # frame_end = struct.unpack('!i', recv_data)[0]
+                s_sock.sendall(feature_bytes_combined + DELIMITER)
+
             s_sock.close()
             print("socket_closed")        
     elif args.mode == 1:
@@ -246,12 +230,11 @@ if __name__ == "__main__":
             sock_conn, sock_addr = s_sock.accept()
             iter = 0
             metrics = defaultdict(list)
-            frame_end = 10
             buffer = b''
             with sock_conn:
                 while True:
                     start_time = time.time()
-                    packet_length = (1 * 32 * 32 * frame_end * 4) + 3
+                    packet_length = (1 * 32 * 32 * feature_end * 4) + 3
                     pk_len = (1 * 32 * 32 * 4) 
                     # byte_data = s_sock.recv(4)
                     # s_sock.send(b'received')
@@ -295,7 +278,7 @@ if __name__ == "__main__":
                 bytes_transfer = defaultdict(list)
                 for file, input_image, output_image in ae_test_dataset:
                     video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-                    print(str(video))
+                    # print(str(video))
                     y = tf.reduce_sum(tf.math.square(input_image - metrics[i][1]), axis=None)
                     # encoded_d = encoder.predict(tf.expand_dims(input_image, axis=0))
                     # decoded_d = decoder.predict(encoded_d)
@@ -311,63 +294,3 @@ if __name__ == "__main__":
                         #print(type(MSE_per_vid), bytes_per_vid)
                         output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
                         f.write(output_line)
-
-    
-    
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-    # if args.mode == 0:
-        
-    #     i = 0 
-    #     for file, input_image, output_image in ae_test_dataset:
-    #         encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
-    #         encoded_data_bytes = encoded_data.tobytes()
-    #         i += 1
-    #         with open('sendfiles/encoded_data'+ str(i) +'.bin', 'wb') as f:
-    #             f.write(encoded_data_bytes)
-    #encode the data and send them over the network
-    # if args.mode == 0:
-    #     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:        
-    #         for file, input_image, output_image in ae_test_dataset:
-    #             #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
-    #             encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
-    #             print(encoded_data.shape,type(encoded_data))
-    #             image_bytes = encoded_data.tobytes() + DELIMITER
-    #             for chunk in chunk_data(image_bytes, MAX_PAYLOAD):
-    #                 time.sleep(0.01)
-    #                 try:
-    #                     s_sock.sendto(chunk, (host, port))
-    #                 except BrokenPipeError:
-    #                     print("Broken Pipe detected")
-    #     s_sock.sendto(b"closetheconnection", (host, port))                 
-    #     s_sock.close()
-    # elif args.mode == 1:
-    #     #receive the encoded_data of one frame from the sender. The following code assumes the dimension of the encoded_data is the same
-    #     # as while it was sent: (1, 32, 32, 10)
-    #     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:
-    #         s_sock.bind((host, port))
-    #         buffer = b''
-    #         while True:
-    #             recv_data, address = s_sock.recvfrom(1024)
-    #             buffer += recv_data
-    #             if DELIMITER in buffer:
-    #                 imagebytes, _, buffer = buffer.partition(DELIMITER)
-    #                 image_array= np.frombuffer(imagebytes, dtype=np.float32)
-    #                 image_array = image_array.reshape(1, 32, 32, 10)   
-    #                 decoded_data = decoder.predict(image_array)
-    #                 print(decoded_data.shape)

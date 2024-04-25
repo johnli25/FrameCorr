@@ -122,8 +122,8 @@ if __name__ == "__main__":
                     if not recv_data:
                         break 
                     
-    host = "172.22.154.247"
-    port = 50002
+    host = "172.22.153.20"
+    port = 50013
     MAX_PAYLOAD = 500
     DELIMITER = b'\xFF\x00\xFF' 
 
@@ -194,7 +194,6 @@ if __name__ == "__main__":
         return int(throughput)
     
 
-
     packet_length = 40963
     encoder, decoder = get_encoder_decoder(model)  
     if args.mode == 0:
@@ -242,6 +241,7 @@ if __name__ == "__main__":
                     buf_size = get_object_size(buffer)
                     throughput = measure_throughput(start_time,buf_size)
                     next_frame_end = optimize_frame_end(throughput)
+                    print("throughput", throughput)
                     print("frame_end",next_frame_end)
                     packed_data = struct.pack('!i', next_frame_end)  # '!' for network byte order (big-endian), 'i' for integer
                     sock_conn.send(packed_data)
@@ -272,7 +272,7 @@ if __name__ == "__main__":
                 bytes_transfer = defaultdict(list)
                 for file, input_image, output_image in ae_test_dataset:
                     video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-                    print(str(video))
+                    # print(str(video))
                     y = tf.reduce_sum(tf.math.square(input_image - metrics[i][1]), axis=None)
                     # encoded_d = encoder.predict(tf.expand_dims(input_image, axis=0))
                     # decoded_d = decoder.predict(encoded_d)
@@ -288,63 +288,3 @@ if __name__ == "__main__":
                         #print(type(MSE_per_vid), bytes_per_vid)
                         output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
                         f.write(output_line)
-
-    
-    
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-    # if args.mode == 0:
-        
-    #     i = 0 
-    #     for file, input_image, output_image in ae_test_dataset:
-    #         encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
-    #         encoded_data_bytes = encoded_data.tobytes()
-    #         i += 1
-    #         with open('sendfiles/encoded_data'+ str(i) +'.bin', 'wb') as f:
-    #             f.write(encoded_data_bytes)
-    #encode the data and send them over the network
-    # if args.mode == 0:
-    #     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:        
-    #         for file, input_image, output_image in ae_test_dataset:
-    #             #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
-    #             encoded_data = encoder.predict(tf.expand_dims(input_image, axis=0))
-    #             print(encoded_data.shape,type(encoded_data))
-    #             image_bytes = encoded_data.tobytes() + DELIMITER
-    #             for chunk in chunk_data(image_bytes, MAX_PAYLOAD):
-    #                 time.sleep(0.01)
-    #                 try:
-    #                     s_sock.sendto(chunk, (host, port))
-    #                 except BrokenPipeError:
-    #                     print("Broken Pipe detected")
-    #     s_sock.sendto(b"closetheconnection", (host, port))                 
-    #     s_sock.close()
-    # elif args.mode == 1:
-    #     #receive the encoded_data of one frame from the sender. The following code assumes the dimension of the encoded_data is the same
-    #     # as while it was sent: (1, 32, 32, 10)
-    #     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:
-    #         s_sock.bind((host, port))
-    #         buffer = b''
-    #         while True:
-    #             recv_data, address = s_sock.recvfrom(1024)
-    #             buffer += recv_data
-    #             if DELIMITER in buffer:
-    #                 imagebytes, _, buffer = buffer.partition(DELIMITER)
-    #                 image_array= np.frombuffer(imagebytes, dtype=np.float32)
-    #                 image_array = image_array.reshape(1, 32, 32, 10)   
-    #                 decoded_data = decoder.predict(image_array)
-    #                 print(decoded_data.shape)
