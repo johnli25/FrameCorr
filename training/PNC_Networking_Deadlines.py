@@ -214,6 +214,7 @@ if __name__ == "__main__":
                     feature_bytes = partition_frame(encoded_data,i,i+1)
                     feature_bytes_combined += feature_bytes.tobytes()
                     print("feature_bytes", get_object_size(feature_bytes_combined))
+                    print(str(video_img_frame), i)
                     delta_timeline = time.time() - start_time_deadline
                     print("current time elapsed", delta_timeline)
                     if delta_timeline >= deadlines[0]:
