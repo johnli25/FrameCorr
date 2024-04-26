@@ -203,28 +203,30 @@ if __name__ == "__main__":
             # print("send buffer size", s_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF))
             s_sock.connect((host, port))
             for file, input_image, output_image in ae_test_dataset:
-                if first_one_flag or s_sock.recv(1024).decode().strip() == "ACK":
-                    #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
-                    encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
-                    feature_end = encoded_data.shape[-1]
-                    print(type(encoded_data), encoded_data.shape, feature_end)
-                    encoded_data = partition_frame(encoded_data, 0, feature_end)
-                    video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
-                    print("total num_bytes of frame", str(video_img_frame), get_object_size(encoded_data.tobytes())) # should I include .tobytes()?
-                    start_time_deadline = time.time()
-                    feature_bytes_combined = b''
-                    for i in range(feature_end): # LOOP THROUGH FEATURES
-                        feature_bytes = partition_frame(encoded_data,i,i+1)
-                        feature_bytes_combined += feature_bytes.tobytes()
-                        print("feature_bytes", get_object_size(feature_bytes_combined))
-                        print(str(video_img_frame), i)
-                        delta_timeline = time.time() - start_time_deadline
-                        print("current time elapsed", delta_timeline)
-                        if delta_timeline >= deadlines[0]:
-                            break
-                    
-                    s_sock.sendall(feature_bytes_combined + DELIMITER)
-                    first_one_flag = False
+                #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
+                encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
+                feature_end = encoded_data.shape[-1]
+                print(type(encoded_data), encoded_data.shape, feature_end)
+                encoded_data = partition_frame(encoded_data, 0, feature_end)
+                video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
+                print("total num_bytes of frame", str(video_img_frame), get_object_size(encoded_data.tobytes())) # should I include .tobytes()?
+                start_time_deadline = time.time()
+                feature_bytes_combined = b''
+                for i in range(feature_end): # LOOP THROUGH FEATURES
+                    feature_bytes = partition_frame(encoded_data,i,i+1)
+                    feature_bytes_combined += feature_bytes.tobytes()
+                    print("feature_bytes", get_object_size(feature_bytes_combined))
+                    print(str(video_img_frame), i)
+                    delta_timeline = time.time() - start_time_deadline
+                    print("current time elapsed", delta_timeline)
+                    if delta_timeline >= deadlines[0]:
+                        break
+                
+                s_sock.sendall(feature_bytes_combined + DELIMITER)
+                ack = s_sock.recv(1024).decode().strip()
+                while ack != "ACK":
+                    ack = s_sock.recv(1024).decode().strip()
+                first_one_flag = False
 
             s_sock.close()
             print("socket_closed")        
@@ -285,7 +287,6 @@ if __name__ == "__main__":
                                 #print(type(MSE_per_vid), bytes_per_vid)
                                 output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
                                 f.write(output_line)
-                    s_sock.sendall(b"ACK")
 
                 s_sock.close()
                 print("socket_closed")
