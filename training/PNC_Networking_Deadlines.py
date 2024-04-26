@@ -198,7 +198,7 @@ if __name__ == "__main__":
     encoder, decoder = get_encoder_decoder(model) 
     deadlines = [200] 
     first_one_flag = True
-    if args.mode == 0:
+    if args.mode == 0: # sender
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             # print("send buffer size", s_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF))
             s_sock.connect((host, port))
@@ -228,7 +228,7 @@ if __name__ == "__main__":
 
             s_sock.close()
             print("socket_closed")        
-    elif args.mode == 1:
+    elif args.mode == 1: # receiver
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             s_sock.bind((host, port))
             s_sock.listen()
@@ -237,6 +237,7 @@ if __name__ == "__main__":
             metrics = defaultdict(list)
             buffer = b''
             with sock_conn:
+                print("receiving buffer size", sock_conn.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF))
                 for file, input_image, output_image in ae_test_dataset:
                     video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
                     while buffer.find(DELIMITER) == -1:
@@ -252,7 +253,7 @@ if __name__ == "__main__":
                     frame_end = image_bytes_size // (1 * 32 * 32 * 4)
                     print("frame_end", frame_end)
                     image_array = np.frombuffer(image_bytes, dtype=np.float32)
-                    print(image_array)
+                    print("image_array", image_array.shape)
                     image_array = image_array.reshape(1,32,32,frame_end)
                     image_array_zp = zero_padding(image_array,(1,32,32,10))
                     #np.save('my_data.npy', image_array)
@@ -262,6 +263,7 @@ if __name__ == "__main__":
                     metrics[video_img_frame].append(get_object_size(image_array_zp))
                     metrics[video_img_frame].append(decoded_data)
                     print("video_img_frame", video_img_frame)  
+                    s_sock.sendall(b"ACK")
 
                     with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
                         MSE = defaultdict(list)
