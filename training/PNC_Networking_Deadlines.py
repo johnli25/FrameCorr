@@ -263,7 +263,10 @@ if __name__ == "__main__":
                     metrics[video_img_frame].append(get_object_size(image_array_zp))
                     metrics[video_img_frame].append(decoded_data)
                     print("video_img_frame", video_img_frame)  
-                    s_sock.sendall(b"ACK")
+                    try:
+                        sock_conn.send(b"ACK")
+                    except socket.error as e:
+                        print(e)
 
                     with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
                         MSE = defaultdict(list)
@@ -285,7 +288,6 @@ if __name__ == "__main__":
                                 #print(type(MSE_per_vid), bytes_per_vid)
                                 output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
                                 f.write(output_line)
-                    s_sock.sendall(b"ACK")
 
                 s_sock.close()
                 print("socket_closed")
