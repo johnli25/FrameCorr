@@ -66,7 +66,6 @@ if __name__ == "__main__":
     #     print(data[0] - data[1])
     #     exit()
 
-
     ae_path = args.ae_path
     joint_path = args.joint_path
     ModelObject = ae_model_loader(args.model)
@@ -251,7 +250,9 @@ if __name__ == "__main__":
             buffer = b''
             with sock_conn:
                 print("receiving buffer size", sock_conn.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF))
+                total_start_time = time.time()
                 for file, input_image, output_image in ae_test_dataset:
+                    video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
                     video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
                     while buffer.find(DELIMITER) == -1:
                         start_time = time.time()
@@ -266,41 +267,59 @@ if __name__ == "__main__":
                     frame_end = image_bytes_size // (1 * 32 * 32 * 4)
                     print("frame_end", frame_end)
                     image_array = np.frombuffer(image_bytes, dtype=np.float32)
+                    image_array = image_array.reshape(1, 32, 32, frame_end)
                     print("image_array", image_array.shape)
-                    image_array = image_array.reshape(1,32,32,frame_end)
-                    image_array_zp = zero_padding(image_array,(1,32,32,10))
+                    image_array_zp = zero_padding(frame=image_array, target_shape=(1,32,32,10))
                     #np.save('my_data.npy', image_array)
                     #np.savetxt(fx, image_array.flatten(), fmt='%4.6f', delimiter=' ')
                     #image_array = image_array.reshape(1, 32, 32, 10)
                     decoded_data = decoder.predict(image_array_zp)
-                    metrics[video_img_frame].append(get_object_size(image_array_zp))
-                    metrics[video_img_frame].append(decoded_data)
+                    print("decoded_data", decoded_data.shape)
+                    metrics[video].append(get_object_size(image_array_zp))
+                    metrics[video].append(decoded_data)
                     print("video_img_frame", video_img_frame)  
+
+                    input_directory = "PNC_FrameCorr_input_imgs"
+                    if not os.path.exists(input_directory):
+                        os.makedirs(input_directory)
+                    plt.imsave("{}/{}".format(input_directory, video_img_frame), input_image.numpy()[:,:,:])
+
+                    received_directory = "PNC_FrameCorr_received_imgs"
+                    if not os.path.exists(received_directory):
+                        os.makedirs(received_directory)
+                    plt.imsave("{}/{}".format(received_directory, video_img_frame), decoded_data[0,:,:,:])
+
                     try:
                         sock_conn.send(b"ACK")
                     except socket.error as e:
                         print(e)
 
-                    with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
-                        MSE = defaultdict(list)
-                        bytes_transfer = defaultdict(list)
-                        for file, input_image, output_image in ae_test_dataset:
-                            video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-                            # print(str(video))
-                            y = tf.reduce_sum(tf.math.square(input_image - metrics[video_img_frame][1]), axis=None)
-                            # encoded_d = encoder.predict(tf.expand_dims(input_image, axis=0))
-                            # decoded_d = decoder.predict(encoded_d)
-                            # print(diff_between_tf(decoded_d,metrics[i][1]))
-                            # f.write(output_line)
-                            MSE[video].append(y)
-                            bytes_transfer[video].append(metrics[video_img_frame][0]) # Populate with Size Vals from Metric
-                        for k, v in MSE.items():
-                            if v:
-                                bytes_per_vid= sum(bytes_transfer[k])
-                                MSE_per_vid = np.mean(v)
-                                #print(type(MSE_per_vid), bytes_per_vid)
-                                output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
-                                f.write(output_line)
+                    print("input img and decoded img", input_image.shape, decoded_data.shape)
+                    frame_ssd = tf.reduce_sum(tf.math.square(input_image - decoded_data.squeeze()), axis=None)
+                    print("frame_ssd", frame_ssd)
+                    # MSE[video_img_frame].append(frame_ssd)
+
+                    # with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
+                    #     MSE = defaultdict(list)
+                    #     bytes_transfer = defaultdict(list)
+                    #     for file, input_image, output_image in ae_test_dataset:
+                    #         video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
+                    #         # print(str(video))
+                    #         # encoded_d = encoder.predict(tf.expand_dims(input_image, axis=0))
+                    #         # decoded_d = decoder.predict(encoded_d)
+                    #         # print(diff_between_tf(decoded_d,metrics[i][1]))
+                    #         # f.write(output_line)
+                    #         MSE[video].append(y)
+                    #         bytes_transfer[video].append(metrics[video_img_frame][0]) # Populate with Size Vals from Metric
+                    #     for k, v in MSE.items():
+                    #         if v:
+                    #             bytes_per_vid= sum(bytes_transfer[k])
+                    #             MSE_per_vid = np.mean(v)
+                    #             #print(type(MSE_per_vid), bytes_per_vid)
+                    #             output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
+                    #             f.write(output_line)
+                
+                print("Total time taken", time.time() - total_start_time)
 
                 s_sock.close()
                 print("socket_closed")
