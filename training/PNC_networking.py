@@ -213,9 +213,9 @@ if __name__ == "__main__":
                 print(str(video),num_bytes)
                 # LOOP THROUGH FEATURES
                 s_sock.sendall(image_bytes)
-                recv_data = s_sock.recv(4)
-                print(recv_data)
-                frame_end = struct.unpack('!i', recv_data)[0]
+                # recv_data = s_sock.recv(4)
+                # print(recv_data)
+                # frame_end = struct.unpack('!i', recv_data)[0]
             s_sock.close()
             print("socket_closed")        
     elif args.mode == 1:
@@ -286,5 +286,5 @@ if __name__ == "__main__":
                         bytes_per_vid= sum(bytes_transfer[k])
                         MSE_per_vid = np.mean(v)
                         #print(type(MSE_per_vid), bytes_per_vid)
-                        output_line = "Frame{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
+                        output_line = "Framering{} Bytes Received {} MSE: {}\n".format(k,bytes_per_vid, MSE_per_vid)
                         f.write(output_line)
