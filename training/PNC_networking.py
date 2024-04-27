@@ -16,6 +16,7 @@ import sys
 import struct
 import numpy as np
 from collections import defaultdict
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -236,7 +237,7 @@ if __name__ == "__main__":
                     buffer = recvall(sock_conn,packet_length)
                     if not buffer:
                         break
-                    ###
+
                     # CALCULATE NORMALIZED THROUGH
                     buf_size = get_object_size(buffer)
                     throughput = measure_throughput(start_time,buf_size)
@@ -245,9 +246,6 @@ if __name__ == "__main__":
                     print("frame_end",next_frame_end)
                     packed_data = struct.pack('!i', next_frame_end)  # '!' for network byte order (big-endian), 'i' for integer
                     sock_conn.send(packed_data)
-    
-                    #send_int(s_sock,next_frame_end)
-                    ###
 
                     image_bytes, _, buffer = buffer.partition(DELIMITER)
                     image_array= np.frombuffer(image_bytes, dtype=np.float32)
@@ -258,10 +256,17 @@ if __name__ == "__main__":
                     #np.save('my_data.npy', image_array)
                     #np.savetxt(fx, image_array.flatten(), fmt='%4.6f', delimiter=' ')
                     #image_array = image_array.reshape(1, 32, 32, 10)
+                    print("image array zero-pad", image_array_zp.shape)
                     decoded_data = decoder.predict(image_array_zp)
+
                     metrics[iter].append(get_object_size(image_array_zp))
                     metrics[iter].append(decoded_data)
                     print(iter)
+                    received_directory = "PNC_FrameCorr_received_imgs"
+                    if not os.path.exists(received_directory):
+                        os.makedirs(received_directory)
+                    plt.imsave("{}/{}".format(received_directory, "f" + str(iter) + '.jpg'), decoded_data[0,:,:,:])
+                    
                     iter += 1
                     buffer = b''
                 s_sock.close()
