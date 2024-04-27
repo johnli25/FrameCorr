@@ -287,7 +287,7 @@ if __name__ == "__main__":
                     print("input img and decoded img", input_image.shape, decoded_data.shape)
                     frame_ssd = tf.reduce_sum(tf.math.square(input_image - decoded_data.squeeze()), axis=None)
                     print("frame_ssd", frame_ssd)
-                    # MSE[video_img_frame].append(frame_ssd)
+                    # MSE[video_img_frame].append(frame_ssd)f
 
                     # with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
                     #     MSE = defaultdict(list)
