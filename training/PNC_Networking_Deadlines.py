@@ -250,38 +250,51 @@ if __name__ == "__main__":
             s_sock.listen()
             sock_conn, sock_addr = s_sock.accept()
             iter = 0
-            metrics = defaultdict(list)
-            buffer = b''
+            metrics, video_MSE = defaultdict(list), defaultdict(list) 
             with sock_conn:
-                print("receiving buffer size", sock_conn.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF))
+                # print("receiving buffer size", sock_conn.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF))
                 total_start_time = time.time()
                 for file, input_image, output_image in ae_test_dataset:
-                    video = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4].split("_")[:-1])
-                    video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
-                    while buffer.find(DELIMITER) == -1:
-                        start_time = time.time()
-                        chunk = sock_conn.recv(4096)
-                        if not chunk:
-                            break
-                        buffer += chunk
-                        
-                    image_bytes, _, buffer = buffer.partition(DELIMITER)
-                    image_bytes_size = get_object_size(image_bytes)
-                    print("image_bytes_size", image_bytes_size)
-                    frame_end = image_bytes_size // (1 * 32 * 32 * 4)
-                    print("frame_end", frame_end)
-                    image_array = np.frombuffer(image_bytes, dtype=np.float32)
-                    image_array = image_array.reshape(1, 32, 32, frame_end)
-                    print("image_array", image_array.shape)
+                    video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1])
+                    video = "".join(video_img_frame[:-4].split("_")[:-1])
+                    image_array = np.zeros((1, 32, 32, 10), dtype=np.float32)
+                    buffer = b''
+                    moveonto_next_frame = False
+                    for i in range(10):
+                        while not moveonto_next_frame and buffer.find(DELIMITER) == -1:
+                            if END_FRAME_DELIMITER in buffer:
+                                moveonto_next_frame = True
+                                break
+                            start_time = time.time()
+                            chunk = sock_conn.recv(4096)
+                            if not chunk:
+                                break
+                            buffer += chunk
+
+                        if DELIMITER in buffer:
+                            image_bytes, _, buffer = buffer.partition(DELIMITER)
+                        elif END_FRAME_DELIMITER in buffer:
+                            image_bytes, _, buffer = buffer.partition(END_FRAME_DELIMITER)
+                        image_bytes_size = get_object_size(image_bytes)
+                        # print("image_bytes_size", image_bytes_size)
+                        image_bytes = np.frombuffer(image_bytes, dtype=np.float32)
+                        image_bytes = image_bytes.reshape(1, 32, 32, 1)
+                        frame_end = image_bytes_size // (1 * 32 * 32 * 4)
+                        image_bytes = np.squeeze(image_bytes)
+                        # print("image_array", image_array[:,:,:,i] .shape)
+                        image_array[:,:,:,i] = image_bytes[:,:]
+                        if moveonto_next_frame: break
+
+                    # image_array = image_array.reshape(1, 32, 32, frame_end)
                     image_array_zp = zero_padding(frame=image_array, target_shape=(1,32,32,10))
                     #np.save('my_data.npy', image_array)
                     #np.savetxt(fx, image_array.flatten(), fmt='%4.6f', delimiter=' ')
                     #image_array = image_array.reshape(1, 32, 32, 10)
                     decoded_data = decoder.predict(image_array_zp)
-                    print("decoded_data", decoded_data.shape)
-                    metrics[video].append(get_object_size(image_array_zp))
-                    metrics[video].append(decoded_data)
-                    print("video_img_frame", video_img_frame)  
+                    print("decoded_data =", decoded_data.shape)
+                    # metrics[video].append(get_object_size(image_array_zp))
+                    # metrics[video].append(decoded_data)
+                    print("video_img_frame :", video_img_frame)  
 
                     input_directory = "PNC_FrameCorr_input_imgs"
                     if not os.path.exists(input_directory):
@@ -298,10 +311,11 @@ if __name__ == "__main__":
                     except socket.error as e:
                         print(e)
 
-                    print("input img and decoded img", input_image.shape, decoded_data.shape)
+                    # print("input img and decoded img", input_image.shape, decoded_data.shape)
                     frame_ssd = tf.reduce_sum(tf.math.square(input_image - decoded_data.squeeze()), axis=None)
-                    print("frame_ssd", frame_ssd)
-                    # MSE[video_img_frame].append(frame_ssd)f
+                    print("frame_ssd =", frame_ssd)
+
+                    video_MSE[video].append(frame_ssd.numpy().item())
 
                     # with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
                     #     MSE = defaultdict(list)
@@ -324,6 +338,8 @@ if __name__ == "__main__":
                     #             f.write(output_line)
                 
                 print("Total time taken", time.time() - total_start_time)
-
                 s_sock.close()
                 print("socket_closed")
+
+                for k, v in video_MSE.items():
+                    print("Video: {} MSE: {}".format(k, np.mean(v)))
