@@ -17,6 +17,7 @@ import struct
 import numpy as np
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import random
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -125,6 +126,7 @@ if __name__ == "__main__":
     host = "172.22.153.20"
     port = 50013
     DELIMITER = b'\xFF\x00\xFF' 
+    END_FRAME_DELIMITER = b'\x11\xEE\x11' 
 
     def chunk_data(data, chunk_size):
         """Chunks data into smaller pieces."""
@@ -209,7 +211,7 @@ if __name__ == "__main__":
                     encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
                     feature_end = encoded_data.shape[-1]
                     print(type(encoded_data), encoded_data.shape, feature_end)
-                    encoded_data = partition_frame(encoded_data, 0, 8)
+                    encoded_data = partition_frame(encoded_data, 0, 10)
 
                     # <<<<< DEBUG encode/decode without sending! >>>>>
                     # decoded_data = decoder.predict(encoded_data)
@@ -224,17 +226,19 @@ if __name__ == "__main__":
                     start_time_deadline = time.time()
                     feature_bytes_combined = b''
                     for i in range(feature_end): # LOOP THROUGH FEATURES
-                        feature_bytes = partition_frame(encoded_data,i,i+1)
-                        feature_bytes_combined += feature_bytes.tobytes()
-                        print("feature_bytes", get_object_size(feature_bytes_combined))
+                        feature_bytes = partition_frame(encoded_data, i, i+1)
                         print(str(video_img_frame), i)
+                        feature_bytes = feature_bytes.tobytes()
+                        print("feature_bytes", get_object_size(feature_bytes))
                         delta_timeline = time.time() - start_time_deadline
                         print("current time elapsed", delta_timeline)
-                        if delta_timeline >= deadlines[0]:
+                        if delta_timeline >= deadlines[0] or i > 6: # or i > random.randint(2, feature_end):
+                            s_sock.sendall(feature_bytes + END_FRAME_DELIMITER)
                             break
+                        else:
+                            s_sock.sendall(feature_bytes + DELIMITER)
 
-                    # s_sock.sendall(feature_bytes_combined + DELIMITER)
-                    s_sock.sendall(encoded_data.tobytes() + DELIMITER)
+                    # s_sock.sendall(END_FRAME_DELIMITER)
                     first_one_flag = False
 
             s_sock.close()
