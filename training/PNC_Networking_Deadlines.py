@@ -232,7 +232,7 @@ if __name__ == "__main__":
                         print("feature_bytes", get_object_size(feature_bytes))
                         delta_timeline = time.time() - start_time_deadline
                         print("current time elapsed", delta_timeline)
-                        if delta_timeline >= deadlines[0] or i > 6: # or i > random.randint(2, feature_end):
+                        if delta_timeline >= deadlines[0] or i > 7: # or i > random.randint(2, feature_end):
                             s_sock.sendall(feature_bytes + END_FRAME_DELIMITER)
                             break
                         else:
