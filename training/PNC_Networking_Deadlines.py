@@ -291,15 +291,15 @@ if __name__ == "__main__":
                     #np.savetxt(fx, image_array.flatten(), fmt='%4.6f', delimiter=' ')
                     #image_array = image_array.reshape(1, 32, 32, 10)
                     decoded_data = decoder.predict(image_array_zp)
-                    print("decoded_data =", decoded_data.shape)
+                    # print("decoded_data =", decoded_data.shape)
                     # metrics[video].append(get_object_size(image_array_zp))
                     # metrics[video].append(decoded_data)
-                    print("video_img_frame :", video_img_frame)  
+                    # print("video_img_frame :", video_img_frame)  
 
-                    input_directory = "PNC_FrameCorr_input_imgs"
-                    if not os.path.exists(input_directory):
-                        os.makedirs(input_directory)
-                    plt.imsave("{}/{}".format(input_directory, video_img_frame), input_image.numpy()[:,:,:])
+                    # input_directory = "PNC_FrameCorr_input_imgs"
+                    # if not os.path.exists(input_directory):
+                    #     os.makedirs(input_directory)
+                    # plt.imsave("{}/{}".format(input_directory, video_img_frame), input_image.numpy()[:,:,:])
 
                     received_directory = "PNC_FrameCorr_received_imgs"
                     if not os.path.exists(received_directory):
@@ -312,10 +312,10 @@ if __name__ == "__main__":
                         print(e)
 
                     # print("input img and decoded img", input_image.shape, decoded_data.shape)
-                    frame_ssd = tf.reduce_sum(tf.math.square(input_image - decoded_data.squeeze()), axis=None)
-                    print("frame_ssd =", frame_ssd)
+                    # frame_ssd = tf.reduce_sum(tf.math.square(input_image - decoded_data.squeeze()), axis=None)
+                    # print("frame_ssd =", frame_ssd)
 
-                    video_MSE[video].append(frame_ssd.numpy().item())
+                    # video_MSE[video].append(frame_ssd.numpy().item())
 
                     # with open("new_metrics.txt", "w+") as f:  # Open the file in write mode
                     #     MSE = defaultdict(list)
