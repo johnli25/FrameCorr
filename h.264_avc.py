@@ -185,6 +185,7 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
     - compressed_frames_directory: Path to the directory containing compressed video frames.
     """
     mse_values = defaultdict(list)
+    video_mses = defaultdict(list)
 
     # Iterate over all frames in the original directory
     for frame_file in os.listdir(original_frames_directory):
@@ -210,28 +211,54 @@ def calculate_mse(original_frames_directory, compressed_frames_directory):
 
     # Calculate the average MSE over all image frames per video
     for key in mse_values:
-        mse_values[key] = np.mean(mse_values[key])
+        video_mses[key] = np.mean(mse_values[key])
 
-    # print("mse_values dict length: ", len(mse_values))
-    print(mse_values['diving_7'])
-    print(mse_values['diving_8'])
-    print(mse_values['golf_front_7'])
-    print(mse_values['golf_front_8'])
-    print(mse_values['kick_front_9'])
-    print(mse_values['kick_front_10'])
-    print(mse_values['lifting_5'])
-    print(mse_values['lifting_6'])
-    print(mse_values['riding_horse_8'])
-    print(mse_values['riding_horse_9'])
-    print(mse_values['running_7'])
-    print(mse_values['running_8'])
-    print(mse_values['running_9'])
-    print(mse_values['skating_8'])
-    print(mse_values['skating_9'])
-    print(mse_values['swing_bench_7'])
-    print(mse_values['swing_bench_8'])
-    print(mse_values['swing_bench_9'])
-    return mse_values # return average mse_values per vid
+    # number of frames in each video
+    # print(len(mse_values['diving_7']) * 32 * 32 * 8 * 4)
+    # print(len(mse_values['diving_8']) * 32 * 32 * 8 * 4)
+    # print(len(mse_values['golf_front_7']) * 32 * 32 * 8 * 4)
+    # print(len(mse_values['golf_front_8'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['kick_front_9'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['kick_front_10'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['lifting_5'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['lifting_6'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['riding_horse_8'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['riding_horse_9'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['running_7'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['running_8'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['running_9'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['skating_8'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['skating_9'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['swing_bench_7'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['swing_bench_8'])* 32 * 32 * 8 * 4)
+    # print(len(mse_values['swing_bench_9'])* 32 * 32 * 8 * 4)
+    print(len(mse_values['diving_7']))
+    print(len(mse_values['diving_8']))
+    print(len(mse_values['golf_front_7']))
+    print(len(mse_values['golf_front_8']))
+    print(len(mse_values['swing_bench_7']))
+
+
+    # average mse values per video
+    print(video_mses['diving_7'])
+    print(video_mses['diving_8'])
+    print(video_mses['golf_front_7'])
+    print(video_mses['golf_front_8'])
+    print(video_mses['kick_front_9'])
+    print(video_mses['kick_front_10'])
+    print(video_mses['lifting_5'])
+    print(video_mses['lifting_6'])
+    print(video_mses['riding_horse_8'])
+    print(video_mses['riding_horse_9'])
+    print(video_mses['running_7'])
+    print(video_mses['running_8'])
+    print(video_mses['running_9'])
+    print(video_mses['skating_8'])
+    print(video_mses['skating_9'])
+    print(video_mses['swing_bench_7'])
+    print(video_mses['swing_bench_8'])
+    print(video_mses['swing_bench_9'])
+    return video_mses # return average mse_values per vid
 
 def extract_bytes_from_video(output_videos):
     '''
