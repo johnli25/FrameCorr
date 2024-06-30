@@ -47,7 +47,6 @@ if __name__ == "__main__":
     # # prepare labels
     image_to_label_map = prepare_labels()#[:50000]
     data_info, class_to_video = extract_info_of_dataset(image_to_label_map)
-    # print(data_info)
 
     # # prepare data
     img_folder = "../new_video_frames_dataset"
@@ -65,7 +64,6 @@ if __name__ == "__main__":
     # for data in ae_test_dataset:
     #     print(data[0] - data[1])
     #     exit()
-
 
     ae_path = args.ae_path
     joint_path = args.joint_path
@@ -107,6 +105,9 @@ if __name__ == "__main__":
         encoder, decoder = get_encoder_decoder(ae)
 
         return encoder, decoder
+    
+    ### NOTE: Networking/Deepak's code below --> ignore ### 
+
     def encoded_data_send():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
             s_sock.connect((host,port))

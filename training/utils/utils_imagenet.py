@@ -21,12 +21,13 @@ class TailDropout:
     def dropout_uniform(self):
         X_init = layers.Input(shape=self.shape)
         total_dim = tf.shape(X_init)[-1]
-        tail_len = tf.random.uniform([1, ], minval=0, maxval=total_dim, dtype=tf.int32)
+        # tail_len = tf.random.uniform([1, ], minval=0, maxval=total_dim, dtype=tf.int32)
+        tail_len = tf.constant([7], dtype=tf.int32)
         head_len = total_dim - tail_len
         mask = tf.concat((tf.ones([tf.shape(X_init)[1], tf.shape(X_init)[2], head_len[0]]),
                           tf.zeros((tf.shape(X_init)[1], tf.shape(X_init)[2], tail_len[0]))), axis=-1)
         X = X_init * mask
-
+        print("X.shape:", X.shape)
         tail_drop = models.Model(X_init, X, name=self.name)
 
         return tail_drop

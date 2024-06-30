@@ -40,7 +40,7 @@ def extract_info_of_dataset(image_to_label):
         video_info[class_name][video_no] += 1
         if video_no not in class_to_video[class_name]:
             class_to_video[class_name].append(video_no)
-    return video_info, class_to_video
+    return video_info, class_to_video # class_to_video[class_name] is a list of video numbers
 
 def prepare_labels():
     # label
@@ -57,6 +57,7 @@ def prepare_labels():
             gts[x.split(' ')[0]] = int(x.split(' ')[1].splitlines()[0])
     # gts = np.array(gts) + 1
     # gts = np.array(gts)
+    # print(gts)
     return gts
 
 def prepare_clssifier(model_folder = "../image_classifiers/", model_name="efficientnet_b0_classification_1"):
@@ -92,7 +93,7 @@ def prepare_data_AE(img_folder, data_info, class_to_video, args, img_size=(224, 
         number_of_videos = len(data_info[class_name])
         train_no = int(0.6 * number_of_videos)
         val_no = int(0.25 * number_of_videos)
-        test_no = number_of_videos - train_no - val_no
+        # test_no = number_of_videos - train_no - val_no # NOT USED ACTUALLY
         
         train.append(class_to_video[class_name][:train_no])
         val.append(class_to_video[class_name][train_no : train_no + val_no])
@@ -160,29 +161,76 @@ def prepare_data_CLS(img_paths, gts, img_size=(224, 224)):
     return train_dataset, val_dataset, test_dataset
 
 
-def prepare_data_MSE_CLS(img_paths, gts, img_size=(224, 224)):
+# def prepare_data_MSE_CLS(img_paths, gts, img_size=(224, 224)):
+#     img_height, img_width = img_size[0], img_size[1]
+#     # step 1
+#     filenames = tf.constant(img_paths)
+#     tf_labels = tf.constant(gts)
+
+#     # step 2: create a dataset returning slices of `filenames`
+#     dataset = tf.data.Dataset.from_tensor_slices((filenames, tf_labels))
+
+#     # step 3: parse every image in the dataset using `map`
+#     def _parse_function(filename, label):
+#         image_string = tf.io.read_file(filename)
+#         image_decoded = tf.image.decode_jpeg(image_string, channels=3)
+#         image = tf.cast(image_decoded, tf.float32)
+#         image /= 255.0
+#         image = tf.image.resize(image, (img_height, img_width))
+#         return image, {"ae_model":image, "efficientnet_b0_classification_1":label}
+
+#     dataset = dataset.map(_parse_function)
+
+#     train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
+#     return train_dataset, val_dataset, test_dataset
+
+def prepare_data_MSE_CLS(img_folder, data_info, class_to_video, args, img_size=(224, 224)):
+    train, val, test = [], [], []
+    for class_name in data_info:
+        number_of_videos = len(data_info[class_name])
+        train_no = int(0.6 * number_of_videos)
+        val_no = int(0.25 * number_of_videos)
+        
+        train.append(class_to_video[class_name][:train_no])
+        val.append(class_to_video[class_name][train_no : train_no + val_no])
+        test.append(class_to_video[class_name][train_no + val_no:])
     img_height, img_width = img_size[0], img_size[1]
     # step 1
-    filenames = tf.constant(img_paths)
-    tf_labels = tf.constant(gts)
+    train_img_paths = create_image_paths(img_folder, data_info, train)
+    val_img_paths = create_image_paths(img_folder, data_info, val)
+    test_img_paths = create_image_paths(img_folder, data_info, test)
+
+    train_img_paths = tf.constant(train_img_paths)
+    val_img_paths = tf.constant(val_img_paths)
+    test_img_paths = tf.constant(test_img_paths)
 
     # step 2: create a dataset returning slices of `filenames`
-    dataset = tf.data.Dataset.from_tensor_slices((filenames, tf_labels))
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_img_paths))
+    val_dataset = tf.data.Dataset.from_tensor_slices((val_img_paths))
+    test_dataset = tf.data.Dataset.from_tensor_slices((test_img_paths))
 
     # step 3: parse every image in the dataset using `map`
-    def _parse_function(filename, label):
+    def _parse_function_ae(filename):
         image_string = tf.io.read_file(filename)
         image_decoded = tf.image.decode_jpeg(image_string, channels=3)
         image = tf.cast(image_decoded, tf.float32)
         image /= 255.0
         image = tf.image.resize(image, (img_height, img_width))
-        return image, {"ae_model":image, "efficientnet_b0_classification_1":label}
+        return image, {"ae_model":image, "efficientnet_b0_classification_1":image}
 
-    dataset = dataset.map(_parse_function)
+    def _parse_function_ae_test(filename):
+        image_string = tf.io.read_file(filename)
+        image_decoded = tf.image.decode_jpeg(image_string, channels=3)
+        image = tf.cast(image_decoded, tf.float32)
+        image /= 255.0
+        image = tf.image.resize(image, (img_height, img_width))
+        return filename, image, {"ae_model":image, "efficientnet_b0_classification_1":image}
 
-    train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
+    train_dataset = train_dataset.map(_parse_function_ae).batch(args.batch_size)
+    val_dataset = val_dataset.map(_parse_function_ae).batch(args.batch_size)
+    test_dataset = test_dataset.map(_parse_function_ae_test)#.batch(args.batch_size)
+    
     return train_dataset, val_dataset, test_dataset
-
 
 def prepare_data_MSE_KL(img_paths, gts, img_size=(224, 224)):
     img_height, img_width = img_size[0], img_size[1]
@@ -432,8 +480,8 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=4, help='Batch size for training.')
     parser.add_argument('--input_size', type=int, default=224, help='Size of the input images.')
     parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate of training.')
-    parser.add_argument('--ae_path', type=str, default='saved_models/default', help='Folder to save the model.')
-    parser.add_argument('--joint_path', type=str, default='saved_models/default', help='Folder to save the model.')
+    parser.add_argument('--ae_path', type=str, default='saved_models/default2', help='Folder to save the model.')
+    parser.add_argument('--joint_path', type=str, default='saved_models/default2', help='Folder to save the model.')
     parser.add_argument('--log_save_path', type=str, default='./', help='Path to save the logs.')
     parser.add_argument('--gpu_id', type=str, default='0', help='GPU id.')
     parser.add_argument('--if_mem_constr', type=boolean_string, default=True, help='GPU memory growth.')
@@ -441,8 +489,6 @@ if __name__ == "__main__":
     parser.add_argument('--tail_drop', type=int, default=0, help='Number of features from tail to drop.')
     args = parser.parse_args()
     
-    
-
     # Logging
     log_save_path = args.log_save_path
     Path(log_save_path).mkdir(parents=True, exist_ok=True)
@@ -464,10 +510,11 @@ if __name__ == "__main__":
         try: tf.config.experimental.set_memory_growth(physical_devices[0], True)
         except: pass
     
-    # # prepare labels
-    image_to_label_map = prepare_labels()#[:50000]
+    # prepare labels
+    image_to_label_map = prepare_labels() #[:50000]
     data_info, class_to_video = extract_info_of_dataset(image_to_label_map)
-    # print(image_to_label_map)
+    print("data info", data_info)
+    print("class to video", class_to_video)
     # exit()
 
     # # prepare data
@@ -486,7 +533,6 @@ if __name__ == "__main__":
     # for data in ae_test_dataset:
     #     print(data[0] - data[1])
     #     exit()
-
 
     ae_path = args.ae_path
     joint_path = args.joint_path
@@ -632,19 +678,19 @@ if __name__ == "__main__":
     #                                        outputs=model.get_layer("encoder").output)
     #     print(encoder.summary())
             
-    # elif args.mode == 1:
-    #     logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
-    #     logging.info("vvvvvv  Enter Joint Training (NON-Trainable CLS)  vvvvvv")
-    #     logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
-    #     last_model_path = os.path.join(joint_path, "last_checkpoint")
-    #     best_model_path = os.path.join(joint_path, "best_checkpoint")
+    elif args.mode == 1:
+        logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+        logging.info("vvvvvv  Enter Joint Training (NON-Trainable CLS)  vvvvvv")
+        logging.info("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+        last_model_path = os.path.join(joint_path, "last_checkpoint")
+        best_model_path = os.path.join(joint_path, "best_checkpoint")
 
-    #     classifier = imagenet_utils.img_classifier(trainable=False)
-    #     # cls.summary()
-    #     joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_CLS(img_paths, gts, img_size=input_size)
-    #     joint_train_dataset.cache()
-    #     joint_val_dataset.cache()
-    #     joint_model = fine_tune_AE_MSE_CROSS(model, classifier, args.learning_rate, joint_train_dataset, joint_val_dataset)
+        classifier = imagenetUtils.img_classifier(trainable=False)
+        # cls.summary()
+        joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_CLS(img_paths, gts, img_size=input_size)
+        joint_train_dataset.cache()
+        joint_val_dataset.cache()
+        joint_model = fine_tune_AE_MSE_CROSS(model, classifier, args.learning_rate, joint_train_dataset, joint_val_dataset)
 
     # elif args.mode == 2:
     #     model = ModelObject(out_size=10).asym_ae(tailDrop=True, encoder_trainable=False)
