@@ -160,30 +160,6 @@ def prepare_data_CLS(img_paths, gts, img_size=(224, 224)):
     train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
     return train_dataset, val_dataset, test_dataset
 
-
-# def prepare_data_MSE_CLS(img_paths, gts, img_size=(224, 224)):
-#     img_height, img_width = img_size[0], img_size[1]
-#     # step 1
-#     filenames = tf.constant(img_paths)
-#     tf_labels = tf.constant(gts)
-
-#     # step 2: create a dataset returning slices of `filenames`
-#     dataset = tf.data.Dataset.from_tensor_slices((filenames, tf_labels))
-
-#     # step 3: parse every image in the dataset using `map`
-#     def _parse_function(filename, label):
-#         image_string = tf.io.read_file(filename)
-#         image_decoded = tf.image.decode_jpeg(image_string, channels=3)
-#         image = tf.cast(image_decoded, tf.float32)
-#         image /= 255.0
-#         image = tf.image.resize(image, (img_height, img_width))
-#         return image, {"ae_model":image, "efficientnet_b0_classification_1":label}
-
-#     dataset = dataset.map(_parse_function)
-
-#     train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
-#     return train_dataset, val_dataset, test_dataset
-
 def prepare_data_MSE_CLS(img_folder, data_info, class_to_video, args, img_size=(224, 224)):
     train, val, test = [], [], []
     for class_name in data_info:
@@ -194,7 +170,9 @@ def prepare_data_MSE_CLS(img_folder, data_info, class_to_video, args, img_size=(
         train.append(class_to_video[class_name][:train_no])
         val.append(class_to_video[class_name][train_no : train_no + val_no])
         test.append(class_to_video[class_name][train_no + val_no:])
+
     img_height, img_width = img_size[0], img_size[1]
+
     # step 1
     train_img_paths = create_image_paths(img_folder, data_info, train)
     val_img_paths = create_image_paths(img_folder, data_info, val)
@@ -228,9 +206,39 @@ def prepare_data_MSE_CLS(img_folder, data_info, class_to_video, args, img_size=(
 
     train_dataset = train_dataset.map(_parse_function_ae).batch(args.batch_size)
     val_dataset = val_dataset.map(_parse_function_ae).batch(args.batch_size)
-    test_dataset = test_dataset.map(_parse_function_ae_test)#.batch(args.batch_size)
+    test_dataset = test_dataset.map(_parse_function_ae_test) #.batch(args.batch_size)
+
+    # for inputs, targets in train_dataset.take(1): # Print shapes of train_dataset-Only take a single example
+    #     print(f'Train Dataset - inputs shape: {inputs.shape}, targets shape: {targets.shape}')
+
+    # for inputs, targets in val_dataset.take(1): # Print shapes of val_dataset-Only take a single example
+    #     print(f'Validation Dataset - inputs shape: {inputs.shape}, targets shape: {targets.shape}')
     
     return train_dataset, val_dataset, test_dataset
+
+
+# def prepare_data_MSE_CLS(img_paths, gts, img_size=(224, 224)):
+#     img_height, img_width = img_size[0], img_size[1]
+#     # step 1
+#     filenames = tf.constant(img_paths)
+#     tf_labels = tf.constant(gts)
+
+#     # step 2: create a dataset returning slices of `filenames`
+#     dataset = tf.data.Dataset.from_tensor_slices((filenames, tf_labels))
+
+#     # step 3: parse every image in the dataset using `map`
+#     def _parse_function(filename, label):
+#         image_string = tf.io.read_file(filename)
+#         image_decoded = tf.image.decode_jpeg(image_string, channels=3)
+#         image = tf.cast(image_decoded, tf.float32)
+#         image /= 255.0
+#         image = tf.image.resize(image, (img_height, img_width))
+#         return image, {"ae_model":image, "efficientnet_b0_classification_1":label}
+
+#     dataset = dataset.map(_parse_function)
+
+#     train_dataset, val_dataset, test_dataset = train_val_test_split(dataset, 35000, 5000, 10000)
+#     return train_dataset, val_dataset, test_dataset
 
 def prepare_data_MSE_KL(img_paths, gts, img_size=(224, 224)):
     img_height, img_width = img_size[0], img_size[1]
@@ -311,16 +319,14 @@ def fine_tune_AE_MSE_CROSS(autoencoder, cls, learning_rate, train_dataset, val_d
     # Metric Logger
     metricloggercallback = MetricLogger(monitor='val_efficientnet_b0_classification_1_top_5_accuracy', monitor_op=tf.math.greater, best=-np.inf)
     # Restore metric values
-    if  model_state.state['best_values']:
+    if model_state.state['best_values']:
         checkpoint.best = model_state.state['best_values']['val_efficientnet_b0_classification_1_top_5_accuracy']
         metricloggercallback.best = model_state.state['best_values']['val_efficientnet_b0_classification_1_top_5_accuracy']
     
-
     print("set learning rate", learning_rate)
 
-
     ## Create model and load weights
-    joint_model = imagenet_utils.joint_AE_cls_mse_crossentropy(autoencoder, cls)
+    joint_model = imagenet_utils.joint_AE_cls_mse_crossentropy(autoencoder, cls, learning_rate)
     if (not args.restart_training) and os.path.exists(joint_path):
         logging.info("<<<<<<<<<<<<<<<<<< JOINT: LOAD PREVIOUS MODEL >>>>>>>>>>>>>>>>>>>>>>>>")
         model_load_path = tf.train.latest_checkpoint(joint_path)
@@ -336,11 +342,14 @@ def fine_tune_AE_MSE_CROSS(autoencoder, cls, learning_rate, train_dataset, val_d
                             loss_weights=[10,1],
                             metrics={"efficientnet_b0_classification_1":tf.keras.metrics.SparseTopKCategoricalAccuracy(k=5, name='top_5_accuracy')}
                             ) # top_5_categorical_accuracy_customize
-                        
+
+    print("JOINT MODEL SUMMARY BELOW:")                
     joint_model.summary()
     keras.backend.set_value(joint_model.optimizer.learning_rate, learning_rate)
     
     # joint_model.evaluate(val_dataset)
+    print("JOINT MODEL INPUT SHAPE: ", joint_model.input_shape)
+    print("JOINT MODEL OUTPUT SHAPE: ", joint_model.output_shape)
     joint_model.fit(
         train_dataset,
         epochs=args.epochs,
@@ -513,8 +522,8 @@ if __name__ == "__main__":
     # prepare labels
     image_to_label_map = prepare_labels() #[:50000]
     data_info, class_to_video = extract_info_of_dataset(image_to_label_map)
-    print("data info", data_info)
-    print("class to video", class_to_video)
+    print("DATA INFO:: ", data_info)
+    print("CLASS_TO_VIDEO:: ", class_to_video)
     # exit()
 
     # # prepare data
@@ -525,7 +534,7 @@ if __name__ == "__main__":
     # logging.info("Number of imgs in the folder: {}".format(len(img_paths)))
     input_size = (args.input_size, args.input_size)
 
-    # imagenet_utils=imagenetUtils(size=input_size)
+    imagenet_utils=imagenetUtils(size=input_size)
 
     ae_train_dataset, ae_val_dataset, ae_test_dataset = prepare_data_AE(img_folder, data_info, class_to_video, img_size=input_size, args=args)
     # cls_train_dataset, cls_val_dataset, cls_test_dataset = prepare_data_CLS(img_paths, gts, img_size=input_size)
@@ -685,9 +694,10 @@ if __name__ == "__main__":
         last_model_path = os.path.join(joint_path, "last_checkpoint")
         best_model_path = os.path.join(joint_path, "best_checkpoint")
 
-        classifier = imagenetUtils.img_classifier(trainable=False)
+        classifier = imagenet_utils.img_classifier(trainable=False)
         # cls.summary()
-        joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_CLS(img_paths, gts, img_size=input_size)
+        # joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_CLS(img_paths, gts, img_size=input_size)
+        joint_train_dataset, joint_val_dataset, joint_test_dataset = prepare_data_MSE_CLS(img_folder, data_info, class_to_video, args=args, img_size=input_size)
         joint_train_dataset.cache()
         joint_val_dataset.cache()
         joint_model = fine_tune_AE_MSE_CROSS(model, classifier, args.learning_rate, joint_train_dataset, joint_val_dataset)

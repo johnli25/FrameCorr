@@ -10,6 +10,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras import models
 import random
 import logging
+import os 
+
 # import tensorflow_compression as tfc
 class TailDropout:
     def __init__(self, name = 'x', input_data = None, func='uniform', shape=(None, None, None)):
@@ -184,7 +186,8 @@ class imagenetUtils:
         self.img_height, self.img_width = size[0], size[1]
 
     def img_classifier(self, trainable=False):
-        model_path = "../image_classifiers/"
+        print("CURRENT DIR: ", os.getcwd())
+        model_path = "../demo_simulation/image_classifiers/"
         model_name = "efficientnet_b0_classification_1"
         model_path = os.path.join(model_path, model_name)
         assert(os.path.exists(model_path))
