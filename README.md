@@ -6,6 +6,7 @@
 
 #### Misc Notes
 - Decoded data shape is (1, 224, 224, 3) = (filler 1, height=224, width=224, 3 RGB channels) and encoded data shape is (1, 32, 32, 10) = (filler 1, feature_height_??, feature_width_??, 10 features)
+- To run locally, and *retrained/better model* ae, command is `python3 PNC_Networking_Deadlines.py --mode=2 --ae_path=saved_models/ae` 
 
 #### (mostly complete) Networking configuration + setup steps
 - activate the virtual env `source iotvenv/bin/activate` for the sender  and `source edgevenv/bin/activate` for the receiver
