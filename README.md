@@ -1,4 +1,4 @@
-# FrameCorr (forked and directly built off of original Progressive-Neural-Compression repo)
+# FrameCorr (forked and directly built off of original Progressive-Neural-Compression (PNC) repo)
 
 ### If you have any questions, please contact the first author. To quickly try PNC, the network and the checkpoints are in the `demo_simulation` folder. To train PNC from scratch, please go to `training`.
 
