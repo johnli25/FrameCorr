@@ -2,7 +2,7 @@
 
 ### If you have any questions, please contact the first author. To quickly try PNC, the network and the checkpoints are in the `demo_simulation` folder. To train PNC from scratch, please go to `training`.
 
-## FrameCorr log
+## FrameCorr
 
 #### Misc Notes
 - Decoded data shape is (1, 224, 224, 3) = (filler 1, height=224, width=224, 3 RGB channels) and encoded data shape is (1, 32, 32, 10) = (filler 1, feature_height_??, feature_width_??, 10 features)
