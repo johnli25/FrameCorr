@@ -22,10 +22,11 @@ import copy
 
 np.set_printoptions(threshold=np.inf)
 
-host = "172.22.153.20"
-port = 50013
-DELIMITER = b'\xFF\x00\xFF' 
-END_FRAME_DELIMITER = b'\x11\xEE\x11' 
+# host = "172.22.153.20"
+# port = 50013
+
+# Constants (feature slice size in bytes)
+SLICE_SIZE = 32 * 32 * 4  # 32x32 float32 slice
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -38,6 +39,8 @@ if __name__ == "__main__":
     parser.add_argument('--gpu_id', type=str, default='0', help='GPU id.')
     parser.add_argument('--batch_size', type=int, default=4, help='Batch size for training.')
     parser.add_argument('--restart_training', type=boolean_string, default=False, help='If start from scratch.')
+    parser.add_argument('--host', type=str, help='IP address for sender (required if mode=0)')
+    parser.add_argument('--port', type=int, required=True, help='Port number for both sender and receiver')
     args = parser.parse_args()
 
     # Logging
@@ -101,7 +104,7 @@ if __name__ == "__main__":
 
         print("decoder input idx: ", decoder_input_index)
                 
-        # encoder = keras.Model(autoencoder.input, autoencoder.get_layer(name = 'encoder').output, name='encoder1')
+        # encoder = keras.Model(autoen coder.input, autoencoder.get_layer(name = 'encoder').output, name='encoder1')
         encoder = tf.keras.Sequential(name='encoder1')
         for layer in autoencoder.layers[:decoder_input_index]:
             encoder.add(layer)
@@ -209,7 +212,7 @@ if __name__ == "__main__":
             encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0))) # expand_dims() adds a (batch) dimension at the 0th index of 1. .precict() expects a batch of images, so we need to add a batch dimension
             encoded_data_pnc = np.copy(encoded_data)
             # print(encoder.layers[0].summary()) # print the summary of the first Functional layer (there's only 1 anyway LOL) of the encoder; this consists of multiple other sub-layers (refer to PNC paper)
-            random_num_features_keep = random.randint(1, 10) # 3
+            random_num_features_keep = 15 # random.randint(1, 10) # 3
             encoded_data_pnc[:,:,:,random_num_features_keep:] = 0 # PNC: zero out the last x features
             frame_to_data_transmission[video_img_frame] = encoded_data_pnc            
 
@@ -237,15 +240,15 @@ if __name__ == "__main__":
             # fill missing/zeroed out features with previous and future frames
             if prev_video != video:
                 print("prev_video and next video: ", prev_video, video)
-            if prev_frame_enc_data is not None and prev_video == video:
-                for i in range(enc_data.shape[-1]):
-                    if np.all(enc_data[0, :, :, i] == 0):
-                        if i == 0:
-                            enc_data[0, :, :, i] = prev_frame_enc_data[0, :, :, i + 1]
-                        elif i == enc_data.shape[-1] - 1:
-                            enc_data[0, :, :, i] = prev_frame_enc_data[0, :, :, i - 1]
-                        else:
-                            enc_data[0, :, :, i] = (prev_frame_enc_data[0, :, :, i - 1] + prev_frame_enc_data[0, :, :, i + 1]) / 2
+            # if prev_frame_enc_data is not None and prev_video == video:
+            #     for i in range(enc_data.shape[-1]):
+            #         if np.all(enc_data[0, :, :, i] == 0):
+            #             if i == 0:
+            #                 enc_data[0, :, :, i] = prev_frame_enc_data[0, :, :, i + 1]
+            #             elif i == enc_data.shape[-1] - 1:
+            #                 enc_data[0, :, :, i] = prev_frame_enc_data[0, :, :, i - 1]
+            #             else:
+            #                 enc_data[0, :, :, i] = (prev_frame_enc_data[0, :, :, i - 1] + prev_frame_enc_data[0, :, :, i + 1]) / 2
 
             decoded_data = decoder.predict(enc_data) 
 
@@ -262,8 +265,8 @@ if __name__ == "__main__":
 
         print("PNC Video Frame MSE")
         for k, v in PNC_video_frame_mse.items():
-            # print("Video: {} MSE: {}".format(k, np.mean(v)))
-            print(np.mean(v))
+            print("Video: {} MSE: {}  # of Bytes {}".format(k, np.mean(v), len(v) * 32 * 32 * 10))
+            # print(np.mean(v))
 
         print("FrameCorr Video Frame MSE")
         for k, v in FrameCorr_video_mse.items():
@@ -271,108 +274,77 @@ if __name__ == "__main__":
             print(np.mean(v))
 
 
-    if args.mode == 0: # sender
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
-            # print("send buffer size", s_sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF))
-            s_sock.connect((host, port))
+
+    if args.mode == 0:  # Sender
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:
             for file, input_image, output_image in ae_test_dataset:
+                # Encode the frame and get frame title
                 video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
+                encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
+                feature_end = encoded_data.shape[-1]
 
-                if first_one_flag or s_sock.recv(1024).decode().strip() == "ACK":
-                    #encoded_data is of dimension (1, 32, 32, 10). It is one frame's encoding. This will be sent over the network
-                    encoded_data = np.array(encoder.predict(tf.expand_dims(input_image, axis=0)))
-                    feature_end = encoded_data.shape[-1]
-                    print(type(encoded_data), encoded_data.shape, feature_end)
-                    encoded_data = partition_frame(encoded_data, 0, 10)
+                # Convert each slice to 1-byte integers and send
+                for i in range(feature_end):
+                    # print(encoded_data[..., i, 0, 0][0])
+                    # feature_slice = (encoded_data[..., i] * 255).astype(np.uint8).tobytes()  # Scale to 1-byte range and convert
+                    feature_slice = encoded_data[..., i].tobytes()
+                    # print(feature_slice[0])
+                    # Pack title, slice index, and data
+                    packet = struct.pack(f'32sI{SLICE_SIZE}s', video_img_frame.encode(), i, feature_slice)
+                    s_sock.sendto(packet, (args.host, args.port))
 
-                    # <<<<< DEBUG encode/decode without sending! >>>>>
-                    # decoded_data = decoder.predict(encoded_data)
-                    # received_directory = "PNC_FrameCorr_received_imgs"
-                    # if not os.path.exists(received_directory):
-                    #     os.makedirs(received_directory)
-                    # plt.imsave("{}/{}".format(received_directory, video_img_frame), decoded_data[0,:,:,:])
-                    # <<< END DEBUG >>>
+            # Send the FIN packet to indicate the end of this frame transmission
+            s_sock.sendto(b'FIN', (args.host, args.port))
+            print("All frames sent! Complete!")
 
-                    video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1][:-4]) + ".jpg"
-                    print("total num_bytes of frame", str(video_img_frame), get_object_size(encoded_data.tobytes())) # should I include .tobytes()?
-                    start_time_deadline = time.time()
-                    feature_bytes_combined = b''
-                    for i in range(feature_end): # LOOP THROUGH FEATURES
-                        feature_bytes = partition_frame(encoded_data, i, i+1)
-                        print(str(video_img_frame), i)
-                        feature_bytes = feature_bytes.tobytes()
-                        print("feature_bytes", get_object_size(feature_bytes))
-                        delta_timeline = time.time() - start_time_deadline
-                        print("current time elapsed", delta_timeline)
-                        if delta_timeline >= deadlines[0] or i > 7: # or i > random.randint(2, feature_end):
-                            s_sock.sendall(feature_bytes + END_FRAME_DELIMITER)
-                            break
-                        else:
-                            s_sock.sendall(feature_bytes + DELIMITER)
 
-                    # s_sock.sendall(END_FRAME_DELIMITER)
-                    first_one_flag = False
 
-            s_sock.close()
-            print("socket_closed")   
+    if args.mode == 1:  # Receiver
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s_sock:
+            s_sock.bind(('0.0.0.0', args.port))  # Listen on all interfaces
 
-    elif args.mode == 1: # receiver
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_sock:
-            s_sock.bind((host, port))
-            s_sock.listen()
-            sock_conn, sock_addr = s_sock.accept()
-            iter = 0
-            metrics, video_MSE = defaultdict(list), defaultdict(list) 
-            with sock_conn:
-                total_start_time = time.time()
-                for file, input_image, output_image in ae_test_dataset:
-                    video_img_frame = "".join(file.numpy().decode("utf-8").split("/")[-1])
-                    video = "".join(video_img_frame[:-4].split("_")[:-1])
-                    image_array = np.zeros((1, 32, 32, 10), dtype=np.float32)
-                    buffer = b''
-                    moveonto_next_frame = False
-                    for i in range(10):
-                        while not moveonto_next_frame and buffer.find(DELIMITER) == -1:
-                            if END_FRAME_DELIMITER in buffer:
-                                moveonto_next_frame = True
-                                break
-                            start_time = time.time()
-                            chunk = sock_conn.recv(4096)
-                            if not chunk:
-                                break
-                            buffer += chunk
+            # Prepare dictionary to store frames by title
+            frames = {}
 
-                        if DELIMITER in buffer:
-                            image_bytes, _, buffer = buffer.partition(DELIMITER)
-                        elif END_FRAME_DELIMITER in buffer:
-                            image_bytes, _, buffer = buffer.partition(END_FRAME_DELIMITER)
-                        image_bytes_size = get_object_size(image_bytes)
-                        # print("image_bytes_size", image_bytes_size)
-                        image_bytes = np.frombuffer(image_bytes, dtype=np.float32)
-                        image_bytes = image_bytes.reshape(1, 32, 32, 1)
-                        frame_end = image_bytes_size // (1 * 32 * 32 * 4)
-                        image_bytes = np.squeeze(image_bytes)
-                        # print("image_array", image_array[:,:,:,i] .shape)
-                        image_array[:,:,:,i] = image_bytes[:,:]
-                        if moveonto_next_frame: break
+            # Receive and process each packet
+            print("Receiving frames...")
+            while True:
+                packet, addr = s_sock.recvfrom(32 + 4 + SLICE_SIZE)  # 32-byte title + 4-byte index + slice size
 
-                    image_array_zp = zero_padding(frame=image_array, target_shape=(1,32,32,10))
-                    decoded_data = decoder.predict(image_array_zp)
+                # Check if packet is the FIN packet
+                if packet == b'FIN':
+                    print("FIN received, decoding frame")
+                    break
 
-                    received_directory = "PNC_FrameCorr_received_imgs"
-                    if not os.path.exists(received_directory):
-                        os.makedirs(received_directory)
-                    plt.imsave("{}/{}".format(received_directory, video_img_frame), decoded_data[0,:,:,:])
+                # Otherwise, unpack title, slice index, and slice data
+                title, slice_index, slice_data = struct.unpack(f'32sI{SLICE_SIZE}s', packet)
+                title = title.decode().strip('\x00')  # Remove padding from title
 
-                    try:
-                        sock_conn.send(b"ACK")
-                    except socket.error as e:
-                        print(e)
-                
-                print("Total time taken", time.time() - total_start_time)
-                s_sock.close()
-                print("socket_closed")
+                # Initialize frame buffer if it’s the first slice of this frame
+                if title not in frames:
+                    frames[title] = np.zeros((1, 32, 32, 10), dtype=np.float32)
 
-                for k, v in video_MSE.items():
-                    print("Video: {} MSE: {}".format(k, np.mean(v)))
+                # Convert the buffer to a numpy array and reshape it
+                slice_array = np.frombuffer(slice_data, dtype=np.float32).reshape(1, 32, 32)
+                print("slice_array", slice_array.shape)
 
+                # Remove the last dimension to match the expected shape (32, 32)
+                frames[title][..., slice_index] = slice_array
+            
+            # Decode and save each frame
+            print("Done Receiving! Decoding now")
+            for title, image_array in frames.items():
+                # Convert image array to float and decode even if not fully complete
+                # image_array = image_array.astype(np.float32) / 255.0  # Scale back to float range
+                # print(image_array[:, :, :, 0, 0][0])
+                decoded_data = decoder.predict(image_array)
+
+                # Save the reconstructed frame
+                received_directory = "CS537_Received_imgs"
+                if not os.path.exists(received_directory):
+                    os.makedirs(received_directory)
+                plt.imsave(f"{received_directory}/{title}", decoded_data[0, :, :, :])
+
+                # print(f"Frame '{title}' saved with {np.count_nonzero(image_array) / SLICE_SIZE} received slices")
+
+            frames.clear()  # Clear frames after decoding and saving (not necessary)

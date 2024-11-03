@@ -23,16 +23,36 @@ class TailDropout:
     def dropout_uniform(self):
         X_init = layers.Input(shape=self.shape)
         total_dim = tf.shape(X_init)[-1]
-        # tail_len = tf.random.uniform([1, ], minval=0, maxval=total_dim, dtype=tf.int32)
-        tail_len = tf.constant([7], dtype=tf.int32)
+        tail_len = tf.random.uniform([1, ], minval=0, maxval=total_dim, dtype=tf.int32)
+        # tail_len = tf.constant([7], dtype=tf.int32)
         head_len = total_dim - tail_len
         mask = tf.concat((tf.ones([tf.shape(X_init)[1], tf.shape(X_init)[2], head_len[0]]),
                           tf.zeros((tf.shape(X_init)[1], tf.shape(X_init)[2], tail_len[0]))), axis=-1)
+        print("X_init.shape:", X_init.shape)
         X = X_init * mask
         print("X.shape:", X.shape)
         tail_drop = models.Model(X_init, X, name=self.name)
 
         return tail_drop
+    
+    # def dropout_uniform_pnc(self, input_data):
+    #     print("input_data.shape:", input_data.shape)
+    #     X_init = layers.Input(shape=self.shape)
+    #     X_input_data = layers.Input(tensor=input_data)
+    #     total_dim = tf.shape(X_init)[-1]
+    #     tail_len = tf.random.uniform([1, ], minval=0, maxval=total_dim, dtype=tf.int32)
+    #     head_len = total_dim - tail_len
+    #     mask1 = tf.concat((tf.ones([tf.shape(X_init)[1], tf.shape(X_init)[2], head_len[0]]),
+    #                     tf.zeros((tf.shape(X_init)[1], tf.shape(X_init)[2], tail_len[0]))), axis=-1)
+    #     mask2 = tf.concat((tf.zeros([tf.shape(X_init)[1], tf.shape(X_init)[2], head_len[0]]),
+    #                     tf.ones((tf.shape(X_init)[1], tf.shape(X_init)[2], tail_len[0]))), axis=-1)
+    #     print("X_init.shape:", X_init.shape)
+    #     print("X_input_data.shape:", X_input_data.shape)
+    #     X = X_init * mask1 + X_input_data * mask2
+    #     print("X.shape:", X.shape)
+    #     tail_drop = models.Model([X_init, X_input_data], X, name=self.name)
+    #     print("taildrop??")
+    #     return tail_drop
     
     def dropout_uniform_pnc(self):
         X_init = layers.Input(shape=self.shape)

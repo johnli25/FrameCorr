@@ -316,18 +316,13 @@ class AsymAE_two_conv_PNC(AsymAE):
         x = self.encoder_model(x_init)
         if tailDrop:
             logging.info("<<<<<<<<<<<<<<<<<< RAND TAIL DROP ON >>>>>>>>>>>>>>>>>>>>>>>>")
-            x = TailDropout(func='uniform').dropout_model()(x)
             print("x:", x)
-            test_input = tf.random.uniform((1, self.img_height, self.img_width, 3))  # 1 is for batch size
-            test_output = self.encoder_model(test_input)
-            print("test_output:", x.shape)
+            x = TailDropout(func='uniform', input_data=x).dropout_model()(x)
+            print("x after:", x)
+
         else:
             logging.info("<<<<<<<<<<<<<<<<<< RAND TAIL DROP OFFFFF >>>>>>>>>>>>>>>>>>>>>>>>")
         x = self.decoder()(x)
-        test_input = tf.random.uniform((1, self.encoder_output_height, self.encoder_output_width, self.out_size))  # 1 is for batch size
-        test_output = self.decoder()(test_input)
-        print("test_output:", x.shape)
-
         autoencoder = models.Model(x_init, x)
 
         return autoencoder
