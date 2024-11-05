@@ -1,6 +1,20 @@
 # FrameCorr (forked and directly built off of original Progressive-Neural-Compression (PNC) repo)
 
-### If you have any questions, please contact the first author. To quickly try PNC, the network and the checkpoints are in the `demo_simulation` folder. To train PNC from scratch, please go to `training`.
+<p align='center'>
+  <img alt="TensorFlow" src="https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white">
+  <img alt="Keras" src="https://img.shields.io/badge/Keras-FF0000?style=for-the-badge&logo=keras&logoColor=white">
+  <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white">
+  <img alt="Linux" src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black">
+</p>
+
+
+## Quick start with Progressive Neural Compression (PNC): 
+* To quickly try PNC, the network and the checkpoints are in the `demo_simulation` folder. 
+* To train PNC from scratch, please go to `training`. 
+* The testbed implementation of PNC on Raspberry Pi 4 + nRF52840 development kits is at `testbed`.
+* ***PyTorch***: We have included a PyTorch version of the Progressive Neural Compression (PNC) model in the `pnc_pytorch` directory.
+* For any questions, please contact the first author.
+
 
 ## FrameCorr
 
@@ -27,8 +41,28 @@ This repository contains the source code and testbed setup instructions for **R.
 
 🏆🤫 *This paper won "Outstanding Paper Award" and "[RTSS 2023 Best Student Paper Award](https://2023.rtss.org/awards/)."* 🌟🥇 Great thanks to everyone on the team.
 
+<!-- ![pnc_accuracy_size_tradeoff](assets\pnc_accuracy_datasize.png) -->
+
+<div align="center">
+  <img src="assets\pnc_accuracy_datasize.png" width=100% height=100%>
+  
+  **Figure: Top-5 Accuracy vs the Datasize (KB) for different image compression techniques on the ImageNet dataset.** Quality factors (q) are annotated on the graph, showing how varying quality levels impact performance for some methods.
+
+
 ![pnc_overview](assets/pnc_overview.png)
 
+**Figure: Offline training phase and the online runtime phase.**
+</div>
+
+**This work is closely related to our *Edge Offloading* papers:**
+
+* Qiu, J., Wang, R., Hu, B., Guérin, R., & Lu, C. (2024). **"Optimizing Edge Offloading Decisions for Object Detection."**
+[[paper]](https://arxiv.org/abs/2410.18919)
+[[code]](https://github.com/qiujiaming315/edgeml-object-detection/)
+
+* Qiu, J., Wang, R., Chakrabarti, A., Guérin, R., & Lu, C. (2022). **"Adaptive Edge Offloading for Image Classification Under Rate Limit."**
+[[paper]](https://ieeexplore.ieee.org/document/9852802)
+[[code]](https://github.com/qiujiaming315/edgeml-dqn)
 
 
 ## Quick Demo
@@ -39,6 +73,15 @@ This repository contains the source code and testbed setup instructions for **R.
 
 * Put the ImageNet Val images (named as `ILSVRC2012_val_00000001.JPEG`, etc.) in `demo_simulation\val2017`. There are multiple sources to download this dataset, e.g. from [Kaggle ImageNet Object Localization Challenge](https://www.kaggle.com/competitions/imagenet-object-localization-challenge/data).
 * The demo file is located at: `demo_simulation\pnc_demo_simulation.ipynb`
+
+### Using the PyTorch Model
+
+To get started with the PyTorch version of the Progressive Neural Compression (PNC) model, please refer to the Jupyter notebook provided:
+
+1. Open `pnc_pytorch/pnc_pytorch.ipynb`.
+2. Follow the step-by-step instructions in the notebook, which cover model definition, weight conversion from TensorFlow, and loading weights into the PyTorch model.
+
+Please note that while this PyTorch version replicates the structure and functionality of the original TensorFlow model, it has not been fully tested on testbed for correctness.
 
 ## Autoencoder Network
 We separate out the network, training and testbed into different folders so that user can pick the components they need conveniently. 
